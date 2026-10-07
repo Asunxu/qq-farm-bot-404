@@ -41,8 +41,8 @@ jobs:
         id: rebase
         continue-on-error: true
         run: |
-          git config user.name "muyuewang"
-          git config user.email "550975101@qq.com"
+          git config user.name "Asunxu"
+          git config user.email "asinxu@163.com"
           git rebase upstream/main
 
       - name: Push rebased result
