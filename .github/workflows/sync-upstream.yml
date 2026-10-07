@@ -1,14 +1,11 @@
 name: Sync Upstream
-
 on:
   schedule:
     - cron: '*/30 * * * *'
   workflow_dispatch:
-
 permissions:
   contents: write
   issues: write
-
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -63,24 +60,24 @@ jobs:
             --title "上游同步冲突，需要手动处理" \
             --body "## 上游同步冲突
 
-自动 rebase 上游 https://github.com/xxxscarlxrd404/qq-farm-bot/main 时发生冲突，已回滚。
+          自动 rebase 上游 https://github.com/xxxscarlxrd404/qq-farm-bot/main 时发生冲突，已回滚。
 
-### 冲突文件
-\`\`\`
-${CONFLICTS}
-\`\`\`
+          ### 冲突文件
+          \`\`\`
+          ${CONFLICTS}
+          \`\`\`
 
-### 解决方法
-在本地执行以下命令：
+          ### 解决方法
+          在本地执行以下命令：
 
-\`\`\`bash
-git fetch upstream
-git rebase upstream/main
-# 解决冲突后
-git add <冲突文件>
-git rebase --continue
-git push origin main --force-with-lease
-\`\`\`
+          \`\`\`bash
+          git fetch upstream
+          git rebase upstream/main
+          # 解决冲突后
+          git add <冲突文件>
+          git rebase --continue
+          git push origin main --force-with-lease
+          \`\`\`
 
-冲突通常来自上游改动了本地保留的登录/卡密/后台管理相关文件。" \
+          冲突通常来自上游改动了本地保留的登录/卡密/后台管理相关文件。" \
             || true
