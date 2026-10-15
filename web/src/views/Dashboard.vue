@@ -186,7 +186,7 @@ const resourceCards = computed(() => [
     key: 'gold',
     label: '金币',
     icon: '/game-config/resource-icons/gold.png',
-    amount: `${formatGoldAmount(status.value?.status?.gold || 0)}万`,
+    amount: formatGoldAmount(status.value?.status?.gold || 0),
   },
   {
     key: 'coupon',
@@ -718,12 +718,10 @@ useIntervalFn(updateCountdowns, 1000)
             <div class="resource-head">
               <img :src="res.icon" :alt="res.label" class="resource-mini-icon">
               <span class="resource-label">{{ res.label }}</span>
-              <span class="card-arrow i-carbon-chevron-right" />
             </div>
             <div class="resource-amount">
               {{ res.amount }}
             </div>
-            <img :src="res.icon" :alt="res.label" class="resource-big-icon">
           </div>
         </div>
       </div>
@@ -1307,6 +1305,8 @@ useIntervalFn(updateCountdowns, 1000)
   gap: 6px;
   min-height: 96px;
   overflow: hidden;
+  align-items: center;
+  text-align: center;
   transition:
     transform 0.25s ease,
     box-shadow 0.25s ease;
@@ -1356,6 +1356,7 @@ useIntervalFn(updateCountdowns, 1000)
 .resource-head {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   min-width: 0;
 }
@@ -1382,17 +1383,6 @@ useIntervalFn(updateCountdowns, 1000)
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.resource-big-icon {
-  position: absolute;
-  right: 6px;
-  bottom: 2px;
-  width: 52px;
-  height: 52px;
-  object-fit: contain;
-  filter: drop-shadow(0 4px 8px rgba(31, 38, 80, 0.2));
-  pointer-events: none;
 }
 
 .card-arrow {
@@ -1759,11 +1749,6 @@ useIntervalFn(updateCountdowns, 1000)
     font-size: 16px;
   }
 
-  .resource-big-icon {
-    width: 42px;
-    height: 42px;
-  }
-
   .user-card {
     padding: 14px 16px;
   }
@@ -1829,13 +1814,6 @@ useIntervalFn(updateCountdowns, 1000)
   .resource-mini-icon {
     width: 15px;
     height: 15px;
-  }
-
-  .resource-big-icon {
-    right: 2px;
-    bottom: 0;
-    width: 34px;
-    height: 34px;
   }
 
   .card-arrow {
