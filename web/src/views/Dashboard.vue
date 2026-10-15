@@ -731,12 +731,9 @@ useIntervalFn(updateCountdowns, 1000)
 
           <!-- 原「在线」卡片内容，已并入本面板右上角 -->
           <div class="home-status">
-            <div class="farm-status-header">
-              <div class="status-indicator">
-                <span class="status-dot" :class="status?.connection?.connected ? 'online' : 'offline'" />
-                <span class="status-text">{{ status?.connection?.connected ? '在线' : '离线' }}</span>
-              </div>
-              <span class="farm-status-label">农场运行中</span>
+            <div class="status-indicator">
+              <span class="status-dot" :class="status?.connection?.connected ? 'online' : 'offline'" />
+              <span class="status-text">{{ status?.connection?.connected ? '在线' : '离线' }}</span>
             </div>
             <div class="home-status-uptime">
               <span class="i-carbon-time" />
