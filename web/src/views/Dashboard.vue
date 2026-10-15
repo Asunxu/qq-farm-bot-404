@@ -1012,7 +1012,7 @@ useIntervalFn(updateCountdowns, 1000)
   align-self: flex-start;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-shrink: 0;
   flex-wrap: nowrap;
   white-space: nowrap;
@@ -1035,13 +1035,9 @@ useIntervalFn(updateCountdowns, 1000)
     gap: 8px;
   }
 
-  .status-text {
-    font-size: 12px;
-  }
-
   .home-status-uptime {
     gap: 4px;
-    font-size: 11px;
+    font-size: 10px;
   }
 }
 
@@ -1360,8 +1356,15 @@ useIntervalFn(updateCountdowns, 1000)
 .status-text {
   color: #374151;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
+}
+
+/* 窄屏再降一档（须写在基础规则之后才生效） */
+@media (max-width: 480px) {
+  .status-text {
+    font-size: 11px;
+  }
 }
 
 .farm-status-label {
