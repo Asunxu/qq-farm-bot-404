@@ -206,6 +206,31 @@ const resourceCards = computed(() => [
     icon: '/game-config/resource-icons/gold-bean.png',
     amount: formatGoldBeanAmount(status.value?.status?.goldBean || 0),
   },
+  // 化肥 / 图鉴（内容取自原统计区，与资源卡同网格展示）
+  {
+    key: 'fert-normal',
+    label: '普通',
+    icon: '/game-config/resource-icons/fertilizer-normal.png',
+    amount: formatBucketTime(fertilizerNormal.value),
+  },
+  {
+    key: 'fert-organic',
+    label: '有机',
+    icon: '/game-config/resource-icons/fertilizer-organic.png',
+    amount: formatBucketTime(fertilizerOrganic.value),
+  },
+  {
+    key: 'illus-crop',
+    label: '作物图鉴',
+    icon: '/game-config/resource-icons/illustrated-crop.png',
+    amount: `Lv.${illustratedLevels.value.crop}`,
+  },
+  {
+    key: 'illus-mutant',
+    label: '超变图鉴',
+    icon: '/game-config/resource-icons/illustrated-mutant.png',
+    amount: `Lv.${illustratedLevels.value.mutant}`,
+  },
 ])
 
 const featureCards = computed(() => [
@@ -706,7 +731,7 @@ useIntervalFn(updateCountdowns, 1000)
         </div>
       </div>
 
-      <!-- 资源卡片网格（毛玻璃面板） -->
+      <!-- 资源 / 化肥 / 图鉴 卡片网格（毛玻璃面板；一行 4 个，共 2 行） -->
       <div class="glass-panel">
         <div class="resource-cards">
           <div
@@ -715,12 +740,10 @@ useIntervalFn(updateCountdowns, 1000)
             class="game-card resource-card"
             :class="`res-${res.key}`"
           >
-            <div class="resource-head">
-              <img :src="res.icon" :alt="res.label" class="resource-mini-icon">
-              <span class="resource-label">{{ res.label }}</span>
-            </div>
-            <div class="resource-amount">
-              {{ res.amount }}
+            <img :src="res.icon" :alt="res.label" class="resource-icon">
+            <div class="resource-info">
+              <div class="resource-label">{{ res.label }}</div>
+              <div class="resource-amount">{{ res.amount }}</div>
             </div>
           </div>
         </div>
@@ -1299,14 +1322,13 @@ useIntervalFn(updateCountdowns, 1000)
 }
 
 .resource-card {
-  padding: 12px 14px;
+  padding: 14px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 96px;
-  overflow: hidden;
   align-items: center;
-  text-align: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 84px;
+  overflow: hidden;
   transition:
     transform 0.25s ease,
     box-shadow 0.25s ease;
@@ -1336,6 +1358,22 @@ useIntervalFn(updateCountdowns, 1000)
   background: linear-gradient(165deg, rgba(255, 216, 160, 0.6) 0%, rgba(255, 246, 232, 0.24) 100%);
 }
 
+.res-fert-normal {
+  background: linear-gradient(165deg, rgba(214, 240, 178, 0.6) 0%, rgba(246, 252, 236, 0.24) 100%);
+}
+
+.res-fert-organic {
+  background: linear-gradient(165deg, rgba(178, 240, 205, 0.6) 0%, rgba(240, 252, 244, 0.24) 100%);
+}
+
+.res-illus-crop {
+  background: linear-gradient(165deg, rgba(196, 226, 252, 0.6) 0%, rgba(243, 249, 255, 0.24) 100%);
+}
+
+.res-illus-mutant {
+  background: linear-gradient(165deg, rgba(226, 212, 252, 0.6) 0%, rgba(248, 244, 255, 0.24) 100%);
+}
+
 /* 资源数值：按资源着色并放大 */
 .res-gold .resource-amount {
   color: #d97706;
@@ -1353,19 +1391,34 @@ useIntervalFn(updateCountdowns, 1000)
   color: #c2620a;
 }
 
-.resource-head {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 0;
+.res-fert-normal .resource-amount {
+  color: #4d7c0f;
 }
 
-.resource-mini-icon {
-  width: 20px;
-  height: 20px;
+.res-fert-organic .resource-amount {
+  color: #059669;
+}
+
+.res-illus-crop .resource-amount {
+  color: #0284c7;
+}
+
+.res-illus-mutant .resource-amount {
+  color: #7c3aed;
+}
+
+.resource-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
   object-fit: contain;
   flex-shrink: 0;
+  filter: drop-shadow(0 3px 6px rgba(31, 38, 80, 0.15));
+}
+
+.resource-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .resource-label {
@@ -1374,12 +1427,14 @@ useIntervalFn(updateCountdowns, 1000)
   color: #4b5563;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .resource-amount {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   color: #374151;
+  margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1742,7 +1797,14 @@ useIntervalFn(updateCountdowns, 1000)
 
   .resource-card {
     padding: 10px;
-    min-height: 84px;
+    gap: 8px;
+    min-height: 76px;
+  }
+
+  .resource-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
   }
 
   .resource-amount {
@@ -1798,22 +1860,24 @@ useIntervalFn(updateCountdowns, 1000)
   }
 
   .resource-card {
-    padding: 8px;
-    min-height: 74px;
-    border-radius: 16px;
+    padding: 6px;
+    gap: 5px;
+    min-height: 60px;
+    border-radius: 14px;
   }
 
   .resource-label {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .resource-amount {
-    font-size: 13px;
+    font-size: 12px;
   }
 
-  .resource-mini-icon {
-    width: 15px;
-    height: 15px;
+  .resource-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
   }
 
   .card-arrow {
