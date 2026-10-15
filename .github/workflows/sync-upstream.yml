@@ -39,6 +39,10 @@ jobs:
         if: steps.check.outputs.in_sync == 'true'
         run: echo "HEAD already contains upstream/main, nothing to do."
 
+      - name: Configure custom merge driver
+        # 让 .gitattributes 中标记 merge=ours 的自定义前端 UI 路径在合并时保留本仓库版本
+        run: git config merge.ours.driver true
+
       - name: Merge upstream/main
         id: merge
         if: steps.check.outputs.in_sync == 'false'

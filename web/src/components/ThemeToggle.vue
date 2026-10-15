@@ -14,7 +14,7 @@ function selectTheme(theme: Theme) {
   <div class="relative">
     <!-- 主题切换按钮 -->
     <button
-      class="icon-btn mx-2 !outline-none"
+      class="icon-btn mx-2 flex !outline-none"
       title="主题设置"
       @click="appStore.toggleThemePanel()"
     >

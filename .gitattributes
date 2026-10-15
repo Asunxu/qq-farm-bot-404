@@ -1,3 +1,9 @@
-* text=auto eol=lf
-*.bat text eol=crlf
-*.cmd text eol=crlf
+# 自定义前端 UI：与上游 xxxscarlxrd404/qq-farm-bot 同步（git merge upstream/main）时，
+# 这些路径始终保留本仓库版本，避免被上游改掉。
+# 需要 .github/workflows/sync-upstream.yml 在合并前执行：git config merge.ours.driver true
+web/src/App.vue merge=ours
+web/src/style.css merge=ours
+web/src/layouts/DefaultLayout.vue merge=ours
+web/src/components/game/** merge=ours
+web/public/backgrounds/** merge=ours
+web/public/dashboard/** merge=ours
