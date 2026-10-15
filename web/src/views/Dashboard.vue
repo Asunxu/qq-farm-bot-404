@@ -774,191 +774,9 @@ useIntervalFn(updateCountdowns, 1000)
         </div>
       </RouterLink>
 
-      <!-- 功能网格（毛玻璃面板） -->
-      <div class="glass-panel">
-        <div class="feature-grid">
-          <RouterLink
-            v-for="feature in featureCards"
-            :key="feature.key"
-            :to="feature.to"
-            class="game-card feature-card"
-            :class="`feat-${feature.key}`"
-          >
-            <img :src="feature.icon" :alt="feature.title" class="feature-icon">
-            <div class="feature-info">
-              <div class="feature-title">
-                {{ feature.title }}
-              </div>
-              <div class="feature-subtitle">
-                {{ feature.subtitle }}
-              </div>
-            </div>
-            <span class="card-arrow i-carbon-chevron-right" />
-          </RouterLink>
-        </div>
-      </div>
-
-      <!-- 每日签到横幅 -->
-      <div class="daily-checkin-banner">
-        <img src="/dashboard/cow.png" alt="奶牛" class="banner-cow">
-        <div class="banner-text">
-          <h3>每日签到</h3>
-          <p>领取丰厚奖励</p>
-        </div>
-        <RouterLink to="/activity" class="checkin-btn">
-          立即前往
-          <span class="i-carbon-chevron-right" />
-        </RouterLink>
-      </div>
     </div>
 
     <div class="legacy-section">
-      <div class="grid grid-cols-1 shrink-0 gap-4 lg:grid-cols-3 sm:grid-cols-2">
-      <div class="ui-card metric-card min-h-[168px] flex flex-col rounded-lg p-5">
-        <div class="mb-2 flex items-start justify-between">
-          <div class="flex items-center gap-1.5 text-sm text-gray-500">
-            <div class="i-fas-user-circle" />
-            账号
-          </div>
-          <div class="rounded-lg bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-            Lv.{{ status?.status?.level || 0 }}
-          </div>
-        </div>
-        <div class="mb-1 truncate text-xl font-bold" :title="displayName">
-          {{ displayName }}
-        </div>
-        <div class="mt-auto">
-          <div class="mb-1 flex justify-between text-xs text-gray-500">
-            <div class="flex items-center gap-1">
-              <div class="i-fas-bolt text-blue-400" />
-              <span>EXP</span>
-            </div>
-            <span>{{ status?.levelProgress?.current || 0 }} / {{ status?.levelProgress?.needed || '?' }}</span>
-          </div>
-          <div class="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
-            <div
-              class="h-full rounded-full bg-blue-500 transition-all duration-500"
-              :style="{ width: `${getExpPercent(status?.levelProgress)}%` }"
-            />
-          </div>
-          <div class="mt-2 flex justify-between text-xs text-gray-400">
-            <span>效率: {{ expRate }}</span>
-            <span>{{ timeToLevel }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="ui-card metric-card min-h-[168px] flex flex-col justify-between rounded-lg p-5">
-        <div class="grid grid-cols-4 gap-3">
-          <div class="min-w-0">
-            <div class="flex items-center gap-1.5 text-xs text-gray-500">
-              <img src="/game-config/resource-icons/gold.png" alt="金币" class="h-5 w-5 shrink-0 object-contain">
-              金币
-            </div>
-            <div class="text-2xl text-yellow-600 font-bold dark:text-yellow-500">
-              {{ formatGoldAmount(status?.status?.gold || 0) }}
-            </div>
-            <div
-              v-if="(status?.sessionGoldGained || 0) !== 0"
-              class="text-[10px]"
-              :class="(status?.sessionGoldGained || 0) > 0 ? 'text-green-500' : 'text-red-500'"
-            >
-              {{ (status?.sessionGoldGained || 0) > 0 ? '+' : '' }}{{ formatGoldAmount(status?.sessionGoldGained || 0) }}
-            </div>
-          </div>
-          <div class="min-w-0 text-center">
-            <div class="flex items-center justify-center gap-1.5 text-xs text-gray-500">
-              <img src="/game-config/resource-icons/coupon.png" alt="点券" class="h-5 w-5 shrink-0 object-contain">
-              点券
-            </div>
-            <div class="text-2xl text-emerald-500 font-bold dark:text-emerald-400">
-              {{ formatCouponAmount(status?.status?.coupon || 0) }}
-            </div>
-            <div
-              v-if="(status?.sessionCouponGained || 0) !== 0"
-              class="text-[10px]"
-              :class="(status?.sessionCouponGained || 0) > 0 ? 'text-green-500' : 'text-red-500'"
-            >
-              {{ (status?.sessionCouponGained || 0) > 0 ? '+' : '' }}{{ formatCouponAmount(status?.sessionCouponGained || 0) }}
-            </div>
-          </div>
-          <div class="min-w-0 text-center">
-            <div class="flex items-center justify-center gap-1.5 text-xs text-gray-500">
-              <img src="/game-config/resource-icons/diamond.png" alt="钻石" class="h-5 w-5 shrink-0 object-contain">
-              钻石
-            </div>
-            <div class="text-2xl text-cyan-600 font-bold dark:text-cyan-400">
-              {{ formatCouponAmount(status?.status?.diamond || 0) }}
-            </div>
-          </div>
-          <div class="min-w-0 text-right">
-            <div class="flex items-center justify-end gap-1.5 text-xs text-gray-500">
-              <img src="/game-config/resource-icons/gold-bean.png" alt="金豆豆" class="h-5 w-5 shrink-0 object-contain">
-              金豆
-            </div>
-            <div class="text-2xl text-amber-500 font-bold dark:text-amber-400">
-              {{ formatGoldBeanAmount(status?.status?.goldBean || 0) }}
-            </div>
-          </div>
-        </div>
-        <div class="mt-4 border-t border-gray-100/80 pt-3 dark:border-gray-700/80">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="h-2.5 w-2.5 rounded-full" :class="status?.connection?.connected ? 'bg-green-500' : currentStatusReady ? 'bg-red-500' : 'bg-gray-300'" />
-              <span class="text-xs font-bold">{{ status?.connection?.connected ? '在线' : currentStatusReady ? '离线' : '检查中' }}</span>
-            </div>
-            <div class="flex items-center gap-1.5 text-xs text-gray-400">
-              <div class="i-fas-clock text-purple-400" />
-              {{ formatDuration(localUptime) }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="ui-card metric-card min-h-[168px] flex flex-col justify-between rounded-lg p-5">
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <div class="flex items-center gap-1 text-xs text-gray-400">
-              <img src="/game-config/resource-icons/fertilizer-normal.png" alt="普通化肥" class="h-5 w-5 shrink-0 object-contain">
-              普通
-            </div>
-            <div class="font-bold">
-              {{ formatBucketTime(fertilizerNormal) }}
-            </div>
-          </div>
-          <div>
-            <div class="flex items-center gap-1 text-xs text-gray-400">
-              <img src="/game-config/resource-icons/fertilizer-organic.png" alt="有机化肥" class="h-5 w-5 shrink-0 object-contain">
-              有机
-            </div>
-            <div class="font-bold">
-              {{ formatBucketTime(fertilizerOrganic) }}
-            </div>
-          </div>
-        </div>
-        <div class="my-3 border-t border-gray-100/80 dark:border-gray-700/80" />
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <div class="flex items-center gap-1 text-xs text-gray-400">
-              <img src="/game-config/resource-icons/illustrated-crop.png" alt="作物图鉴" class="h-6 w-6 shrink-0 object-contain">
-              作物图鉴
-            </div>
-            <div class="font-bold">
-              Lv.{{ illustratedLevels.crop }}
-            </div>
-          </div>
-          <div>
-            <div class="flex items-center gap-1 text-xs text-gray-400">
-              <img src="/game-config/resource-icons/illustrated-mutant.png" alt="超变图鉴" class="h-6 w-6 shrink-0 object-contain">
-              超变图鉴
-            </div>
-            <div class="font-bold">
-              Lv.{{ illustratedLevels.mutant }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <div class="flex flex-1 flex-col items-stretch gap-5 md:min-h-0 md:flex-row">
       <div class="flex flex-1 flex-col gap-5 md:min-h-0 md:w-3/4">
@@ -1028,7 +846,7 @@ useIntervalFn(updateCountdowns, 1000)
             </div>
           </div>
 
-          <div ref="logContainer" class="ui-subtle-panel relative max-h-[50vh] min-h-0 flex-1 overflow-x-hidden overflow-y-auto rounded-lg p-1.5 text-sm md:max-h-none sm:p-2" @scroll="onLogScroll">
+          <div ref="logContainer" class="ui-subtle-panel relative max-h-[50vh] min-h-0 flex-1 overflow-x-hidden overflow-y-auto rounded-lg p-1.5 text-sm sm:p-2" @scroll="onLogScroll">
             <div v-if="!visibleLogs.length" class="py-8 text-center text-gray-400">
               <div class="i-carbon-document-blank mx-auto mb-3 text-3xl text-gray-300" />
               <div class="text-sm text-gray-500 dark:text-gray-400">
@@ -1069,56 +887,6 @@ useIntervalFn(updateCountdowns, 1000)
       </div>
 
       <div class="flex flex-col gap-4 md:min-h-0 md:w-1/4 md:overflow-hidden">
-        <div class="ui-card flex shrink-0 flex-col rounded-lg p-3.5">
-          <h3 class="mb-3 flex items-center gap-2 text-base font-medium 2xl:text-lg">
-            <div class="i-carbon-hourglass" />
-            <span>下次检查倒计时</span>
-          </h3>
-          <div class="grid grid-cols-3 gap-2">
-            <div class="min-w-0 flex flex-col items-center text-center">
-              <div
-                class="h-18 w-18 flex items-center justify-center rounded-full p-1"
-                :style="getCountdownRingStyle(localNextFarmRemainSec, farmCountdownTotal, '#22c55e')"
-              >
-                <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
-                  <div class="i-carbon-sprout text-xl text-green-500" />
-                  <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">农场</span>
-                </div>
-              </div>
-              <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextFarmCheck">
-                {{ nextFarmCheck }}
-              </div>
-            </div>
-            <div class="min-w-0 flex flex-col items-center text-center">
-              <div
-                class="h-18 w-18 flex items-center justify-center rounded-full p-1"
-                :style="getCountdownRingStyle(localNextHelpRemainSec, helpCountdownTotal, '#3b82f6')"
-              >
-                <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
-                  <div class="i-carbon-user-multiple text-xl text-blue-500" />
-                  <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">帮助</span>
-                </div>
-              </div>
-              <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextHelpCheck">
-                {{ nextHelpCheck }}
-              </div>
-            </div>
-            <div class="min-w-0 flex flex-col items-center text-center">
-              <div
-                class="h-18 w-18 flex items-center justify-center rounded-full p-1"
-                :style="getCountdownRingStyle(localNextStealRemainSec, stealCountdownTotal, '#f97316')"
-              >
-                <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
-                  <div class="i-carbon-run text-xl text-orange-500" />
-                  <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">偷菜</span>
-                </div>
-              </div>
-              <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextStealCheck">
-                {{ nextStealCheck }}
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div class="ui-card min-h-0 flex flex-1 flex-col overflow-hidden rounded-lg p-4">
           <h3 class="mb-3 flex items-center gap-2 text-base font-medium 2xl:text-lg">
@@ -1784,8 +1552,11 @@ useIntervalFn(updateCountdowns, 1000)
 }
 
 /* 原有区域 */
+/* 原首页的「运行日志」「今日统计」模块，沿用当前 UI 的卡片样式 */
 .legacy-section {
-  display: none;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
 }
 
 /* 响应式设计 */
