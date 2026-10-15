@@ -728,6 +728,21 @@ useIntervalFn(updateCountdowns, 1000)
               </span>
             </div>
           </div>
+
+          <!-- 原「在线」卡片内容，已并入本面板右上角 -->
+          <div class="home-status">
+            <div class="farm-status-header">
+              <div class="status-indicator">
+                <span class="status-dot" :class="status?.connection?.connected ? 'online' : 'offline'" />
+                <span class="status-text">{{ status?.connection?.connected ? '在线' : '离线' }}</span>
+              </div>
+              <span class="farm-status-label">农场运行中</span>
+            </div>
+            <div class="home-status-uptime">
+              <span class="i-carbon-time" />
+              <span>已运行 {{ formatDuration(localUptime) }}</span>
+            </div>
+          </div>
         </div>
 
         <div class="resource-cards">
@@ -745,34 +760,6 @@ useIntervalFn(updateCountdowns, 1000)
           </div>
         </div>
       </div>
-
-      <!-- 农场状态卡片 -->
-      <RouterLink to="/personal" class="game-card farm-status-card">
-        <div class="farm-status-left">
-          <div class="farm-status-header">
-            <div class="status-indicator">
-              <span class="status-dot" :class="status?.connection?.connected ? 'online' : 'offline'" />
-              <span class="status-text">{{ status?.connection?.connected ? '在线' : '离线' }}</span>
-            </div>
-            <span class="farm-status-label">农场运行中</span>
-          </div>
-          <div class="farm-preview">
-            <span class="farm-clock">
-              <span class="i-carbon-time" />
-            </span>
-            <div class="farm-preview-text">
-              <span class="farm-time">{{ formatDuration(localUptime) }}</span>
-              <span class="farm-progress-label">已运行</span>
-            </div>
-          </div>
-        </div>
-        <div class="farm-scene">
-          <img src="/dashboard/farm-scene.png" alt="农场">
-          <span class="farm-scene-arrow">
-            <span class="i-carbon-chevron-right" />
-          </span>
-        </div>
-      </RouterLink>
 
     </div>
 
@@ -1022,6 +1009,26 @@ useIntervalFn(updateCountdowns, 1000)
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+/* 原「在线」卡片已并入面板右上角 */
+.home-status {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.home-status-uptime {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'DM Mono', 'Courier New', monospace;
 }
 
 .user-info-row {
