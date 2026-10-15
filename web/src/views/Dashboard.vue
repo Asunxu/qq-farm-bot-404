@@ -887,6 +887,56 @@ useIntervalFn(updateCountdowns, 1000)
       </div>
 
       <div class="flex flex-col gap-4 md:min-h-0 md:w-1/4 md:overflow-hidden">
+        <div class="ui-card flex shrink-0 flex-col rounded-lg p-3.5">
+          <h3 class="mb-3 flex items-center gap-2 text-base font-medium 2xl:text-lg">
+            <div class="i-carbon-hourglass" />
+            <span>下次检查倒计时</span>
+          </h3>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="min-w-0 flex flex-col items-center text-center">
+              <div
+                class="h-18 w-18 flex items-center justify-center rounded-full p-1"
+                :style="getCountdownRingStyle(localNextFarmRemainSec, farmCountdownTotal, '#22c55e')"
+              >
+                <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
+                  <div class="i-carbon-sprout text-xl text-green-500" />
+                  <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">农场</span>
+                </div>
+              </div>
+              <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextFarmCheck">
+                {{ nextFarmCheck }}
+              </div>
+            </div>
+            <div class="min-w-0 flex flex-col items-center text-center">
+              <div
+                class="h-18 w-18 flex items-center justify-center rounded-full p-1"
+                :style="getCountdownRingStyle(localNextHelpRemainSec, helpCountdownTotal, '#3b82f6')"
+              >
+                <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
+                  <div class="i-carbon-user-multiple text-xl text-blue-500" />
+                  <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">帮助</span>
+                </div>
+              </div>
+              <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextHelpCheck">
+                {{ nextHelpCheck }}
+              </div>
+            </div>
+            <div class="min-w-0 flex flex-col items-center text-center">
+              <div
+                class="h-18 w-18 flex items-center justify-center rounded-full p-1"
+                :style="getCountdownRingStyle(localNextStealRemainSec, stealCountdownTotal, '#f97316')"
+              >
+                <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
+                  <div class="i-carbon-run text-xl text-orange-500" />
+                  <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">偷菜</span>
+                </div>
+              </div>
+              <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextStealCheck">
+                {{ nextStealCheck }}
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="ui-card min-h-0 flex flex-1 flex-col overflow-hidden rounded-lg p-4">
           <h3 class="mb-3 flex items-center gap-2 text-base font-medium 2xl:text-lg">
