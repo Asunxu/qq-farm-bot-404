@@ -1008,13 +1008,13 @@ useIntervalFn(updateCountdowns, 1000)
   gap: 14px;
 }
 
-/* 原「在线」卡片已并入面板右上角 */
+/* 原「在线」卡片已并入面板右上角（单行：状态灯 + 在线 · 已运行时长） */
 .home-status {
   margin-left: auto;
+  align-self: flex-start;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
   flex-shrink: 0;
 }
 
@@ -1026,6 +1026,19 @@ useIntervalFn(updateCountdowns, 1000)
   font-size: 12px;
   font-weight: 600;
   font-family: 'DM Mono', 'Courier New', monospace;
+}
+
+/* 窄屏：状态行换到用户信息下方，避免挤压昵称 */
+@media (max-width: 480px) {
+  .user-info-row {
+    flex-wrap: wrap;
+  }
+
+  .home-status {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
 }
 
 .user-info-row {
