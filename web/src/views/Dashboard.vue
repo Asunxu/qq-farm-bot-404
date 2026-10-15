@@ -1014,6 +1014,8 @@ useIntervalFn(updateCountdowns, 1000)
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .home-status-uptime {
@@ -1024,6 +1026,7 @@ useIntervalFn(updateCountdowns, 1000)
   font-size: 12px;
   font-weight: 600;
   font-family: 'DM Mono', 'Courier New', monospace;
+  white-space: nowrap;
 }
 
 /* 窄屏：状态行保持与昵称同一行（右上角），仅压缩字号与间距，避免挤压昵称 */
@@ -1033,7 +1036,7 @@ useIntervalFn(updateCountdowns, 1000)
   }
 
   .status-text {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .home-status-uptime {
@@ -1357,7 +1360,8 @@ useIntervalFn(updateCountdowns, 1000)
 .status-text {
   color: #374151;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .farm-status-label {
