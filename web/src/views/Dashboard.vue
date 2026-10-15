@@ -705,10 +705,8 @@ useIntervalFn(updateCountdowns, 1000)
       <!-- 用户信息 + 资源 / 化肥 / 图鉴（合并为同一个毛玻璃面板；卡片一行 4 个，共 2 行） -->
       <div class="glass-panel home-panel">
         <div class="user-info-row">
-          <img :src="currentAccount?.avatar || '/icon.svg'" alt="用户头像" class="user-avatar-large">
           <div class="user-details">
             <div class="user-name-row">
-              <span class="user-name">{{ displayName }}</span>
               <span class="user-level">Lv.{{ status?.status?.level || 0 }}</span>
             </div>
             <div class="exp-bar-row">
