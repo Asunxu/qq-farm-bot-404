@@ -58,8 +58,6 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
 })
 
-const platform = computed(() => getPlatformLabel(currentAccount.value?.platform))
-
 function cleanText(value: unknown) {
   return String(value || '').trim()
 }
@@ -171,8 +169,6 @@ function openCareer() {
 }
 
 const displayName = computed(() => accountDisplayName(currentAccount.value))
-const currentAvatarSrc = computed(() => avatarSource(currentAccount.value))
-const currentSubtitle = computed(() => accountSubtitle(currentAccount.value))
 
 async function openDropdown() {
   updateDropdownPos()
@@ -283,39 +279,13 @@ async function handleLogout() {
       :aria-expanded="showAccountDropdown"
       :aria-controls="dropdownId"
       aria-label="选择和管理账号"
+      :title="displayName"
       @keydown.escape="closeDropdown"
-      class="max-w-[min(76vw,280px)] flex items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-gray-100/70 dark:hover:bg-gray-700/50"
+      class="account-trigger"
       @click="toggleDropdown"
     >
-      <div class="h-9 w-9 flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 ring-1 ring-gray-200 transition dark:bg-gray-700 hover:ring-2 dark:ring-gray-600 hover:ring-[var(--theme-primary)]">
-        <img
-          v-if="shouldShowAvatar(currentAccount)"
-          :src="currentAvatarSrc"
-          :alt="displayName"
-          class="h-full w-full object-cover"
-          @error="markAvatarFailed(currentAccount)"
-        >
-        <span v-else class="text-sm text-gray-500 font-semibold dark:text-gray-300">
-          {{ avatarInitial(currentAccount) }}
-        </span>
-      </div>
-      <div class="min-w-0 flex flex-col">
-        <span class="truncate text-sm text-gray-900 font-semibold dark:text-gray-100">
-          {{ displayName }}
-        </span>
-        <span class="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-300">
-          <span
-            v-if="platform"
-            class="rounded px-1 py-0.2 text-xs font-medium leading-tight"
-            :class="getPlatformClass(currentAccount?.platform)"
-          >
-            {{ platform }}
-          </span>
-          <span v-if="currentSubtitle" class="truncate">{{ currentSubtitle }}</span>
-        </span>
-      </div>
-      <div
-        class="i-carbon-chevron-down shrink-0 text-gray-400 transition-transform duration-200"
+      <span
+        class="account-trigger-arrow i-carbon-chevron-down"
         :class="{ 'rotate-180': showAccountDropdown }"
       />
     </button>
@@ -493,5 +463,34 @@ async function handleLogout() {
 }
 .custom-scrollbar:hover::-webkit-scrollbar-thumb {
   background-color: rgba(156, 163, 175, 0.5);
+}
+
+/* 右上角账号菜单触发按钮：与左上角导航菜单按钮同款，只放下箭头图标 */
+.account-trigger {
+  display: flex;
+  height: 44px;
+  width: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 4px 14px rgba(31, 38, 80, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.account-trigger:hover {
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(31, 38, 80, 0.16);
+}
+
+.account-trigger-arrow {
+  font-size: 20px;
+  transition: transform 0.2s ease;
 }
 </style>

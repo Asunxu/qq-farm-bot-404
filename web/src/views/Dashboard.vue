@@ -7,7 +7,7 @@ import api from '@/api'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
-import { useAccountStore } from '@/stores/account'
+import { getPlatformClass, getPlatformLabel, useAccountStore } from '@/stores/account'
 import { useBagStore } from '@/stores/bag'
 import { useStatusStore } from '@/stores/status'
 import { useToastStore } from '@/stores/toast'
@@ -37,6 +37,7 @@ let illustratedLevelRequestId = 0
 const clearingLogs = ref(false)
 const refreshingLogs = ref(false)
 const pendingLogCount = ref(0)
+const avatarFailed = ref(false)
 const logScrollStates = new Map<string, { top: number, atBottom: boolean }>()
 
 const filter = reactive({
@@ -147,6 +148,30 @@ const displayName = computed(() => {
   return '未命名'
 })
 
+const platform = computed(() => getPlatformLabel(currentAccount.value?.platform))
+
+// 面板里的头像取值规则与顶栏账号菜单保持一致：在线头像 > 账号头像 > QQ 头像 > 首字母
+const avatarSrc = computed(() => {
+  const acc = currentAccount.value
+  if (!acc)
+    return ''
+  const live = currentStatusReady.value
+    ? String(status.value?.status?.avatar || status.value?.status?.avatarUrl || status.value?.status?.avatar_url || '').trim()
+    : ''
+  const explicit = live || String(acc.avatar || '').trim()
+  if (explicit)
+    return explicit
+  const qq = String(acc.uin || acc.qq || '').trim()
+  if (qq && /^\d+$/.test(qq))
+    return `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=100`
+  return ''
+})
+
+// 切换账号后重置头像加载失败标记，避免一直停在首字母兜底
+watch(() => currentAccount.value?.id, () => {
+  avatarFailed.value = false
+})
+
 const expRate = computed(() => {
   const gain = status.value?.sessionExpGained || 0
   const uptime = status.value?.uptime || 0
@@ -230,51 +255,6 @@ const resourceCards = computed(() => [
     label: '超变图鉴',
     icon: '/game-config/resource-icons/illustrated-mutant.png',
     amount: `Lv.${illustratedLevels.value.mutant}`,
-  },
-])
-
-const featureCards = computed(() => [
-  {
-    key: 'crop',
-    title: '作物图鉴',
-    subtitle: `Lv.${illustratedLevels.value.crop}`,
-    icon: '/dashboard/icon-crop.png',
-    to: '/illustrated',
-  },
-  {
-    key: 'pet',
-    title: '宠物',
-    subtitle: `Lv.${illustratedLevels.value.mutant}`,
-    icon: '/dashboard/icon-pet.png',
-    to: '/pet',
-  },
-  {
-    key: 'book',
-    title: '图鉴',
-    subtitle: '收集进度',
-    icon: '/dashboard/icon-book.png',
-    to: '/illustrated',
-  },
-  {
-    key: 'shop',
-    title: '商城',
-    subtitle: '道具 / 装扮',
-    icon: '/dashboard/icon-shop.png',
-    to: '/shop',
-  },
-  {
-    key: 'gift',
-    title: '活动',
-    subtitle: '精彩活动',
-    icon: '/dashboard/icon-gift.png',
-    to: '/activity',
-  },
-  {
-    key: 'chart',
-    title: '分析',
-    subtitle: '数据统计',
-    icon: '/dashboard/icon-chart.png',
-    to: '/analytics',
   },
 ])
 
@@ -707,6 +687,22 @@ useIntervalFn(updateCountdowns, 1000)
         <div class="user-info-row">
           <div class="user-details">
             <div class="user-name-row">
+              <span class="user-avatar-sm">
+                <img
+                  v-if="avatarSrc && !avatarFailed"
+                  class="user-avatar-img"
+                  :src="avatarSrc"
+                  :alt="displayName"
+                  @error="avatarFailed = true"
+                >
+                <span v-else class="user-avatar-initial">{{ (displayName || '?').charAt(0) }}</span>
+              </span>
+              <span class="user-name">{{ displayName }}</span>
+              <span
+                v-if="platform"
+                class="user-platform"
+                :class="getPlatformClass(currentAccount?.platform)"
+              >{{ platform }}</span>
               <span class="user-level">Lv.{{ status?.status?.level || 0 }}</span>
             </div>
             <div class="exp-bar-row">
@@ -1065,12 +1061,15 @@ useIntervalFn(updateCountdowns, 1000)
 .user-name-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: nowrap;
   margin-bottom: 10px;
 }
 
 .user-name {
-  font-size: 18px;
+  min-width: 0;
+  font-size: 15px;
   font-weight: 700;
   color: #333;
   white-space: nowrap;
@@ -1086,6 +1085,41 @@ useIntervalFn(updateCountdowns, 1000)
   font-size: 12px;
   font-weight: 700;
   flex-shrink: 0;
+}
+
+/* 原顶栏账号菜单的头像 / 昵称 / 平台标签，已下沉到面板内、等级徽章左侧 */
+.user-avatar-sm {
+  display: flex;
+  height: 30px;
+  width: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(31, 38, 80, 0.16);
+}
+
+.user-avatar-img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.user-avatar-initial {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.user-platform {
+  flex-shrink: 0;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .exp-bar-row {
@@ -1364,6 +1398,15 @@ useIntervalFn(updateCountdowns, 1000)
 @media (max-width: 480px) {
   .status-text {
     font-size: 11px;
+  }
+
+  .user-name {
+    font-size: 13px;
+  }
+
+  .user-avatar-sm {
+    height: 26px;
+    width: 26px;
   }
 }
 
