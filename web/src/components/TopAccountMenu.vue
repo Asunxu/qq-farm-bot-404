@@ -413,15 +413,6 @@ async function handleLogout() {
             <div class="i-carbon-add-alt" />
             <span>管理账号</span>
           </router-link>
-          <button
-            type="button"
-            class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-gray-100/50 dark:hover:bg-gray-700/50"
-            :style="{ color: 'var(--theme-primary)' }"
-            @click="openPasswordModal"
-          >
-            <div class="i-carbon-password" />
-            <span>修改密码</span>
-          </button>
         </div>
         <div class="mt-1 border-t border-gray-100 pt-1 dark:border-gray-700">
           <button
@@ -433,6 +424,15 @@ async function handleLogout() {
           >
             <div class="i-carbon-notification" />
             <span>设置公告</span>
+          </button>
+          <button
+            type="button"
+            class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-gray-100/50 dark:hover:bg-gray-700/50"
+            :style="{ color: 'var(--theme-primary)' }"
+            @click="openPasswordModal"
+          >
+            <div class="i-carbon-password" />
+            <span>修改密码</span>
           </button>
           <button
             type="button"
