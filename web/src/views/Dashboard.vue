@@ -708,18 +708,20 @@ useIntervalFn(updateCountdowns, 1000)
           </div>
         </div>
 
-        <!-- EXP 效率 与 当前/所需经验 一行；下面经验条比面板略窄 -->
-        <div class="exp-meta">
-          <span class="exp-rate">
-            <span class="exp-bolt i-fas-bolt" />
-            EXP 效率：{{ expRate }}
-          </span>
-          <span class="exp-total">{{ status?.levelProgress?.current || 0 }} / {{ status?.levelProgress?.needed || 0 }}</span>
-        </div>
+        <!-- EXP 效率 与 当前/所需经验 一行；下面经验条比面板略窄（同组内紧凑） -->
+        <div class="exp-section">
+          <div class="exp-meta">
+            <span class="exp-rate">
+              <span class="exp-bolt i-fas-bolt" />
+              EXP 效率：{{ expRate }}
+            </span>
+            <span class="exp-total">{{ status?.levelProgress?.current || 0 }} / {{ status?.levelProgress?.needed || 0 }}</span>
+          </div>
 
-        <div class="exp-bar-row">
-          <div class="exp-progress-bar">
-            <div class="exp-progress-fill" :style="{ width: `${getExpPercent(status?.levelProgress)}%` }" />
+          <div class="exp-bar-row">
+            <div class="exp-progress-bar">
+              <div class="exp-progress-fill" :style="{ width: `${getExpPercent(status?.levelProgress)}%` }" />
+            </div>
           </div>
         </div>
 
@@ -730,7 +732,9 @@ useIntervalFn(updateCountdowns, 1000)
             class="game-card resource-card"
             :class="`res-${res.key}`"
           >
-            <img :src="res.icon" :alt="res.label" class="resource-icon">
+            <div class="resource-icon-zone">
+              <img :src="res.icon" :alt="res.label" class="resource-icon">
+            </div>
             <div class="resource-info">
               <div class="resource-label">{{ res.label }}</div>
               <div class="resource-amount">{{ res.amount }}</div>
@@ -745,7 +749,7 @@ useIntervalFn(updateCountdowns, 1000)
 
     <div class="flex flex-1 flex-col items-stretch gap-5 md:min-h-0 md:flex-row">
       <div class="flex flex-1 flex-col gap-5 md:min-h-0 md:w-3/4">
-        <div class="ui-card-elevated flex flex-1 flex-col rounded-lg p-3 md:min-h-0 md:overflow-hidden sm:p-5">
+        <div class="glass-card-lg flex flex-1 flex-col p-3 md:min-h-0 md:overflow-hidden sm:p-5">
           <div class="mb-4 flex flex-col gap-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <h3 class="flex items-center gap-2 text-lg font-medium">
@@ -852,7 +856,7 @@ useIntervalFn(updateCountdowns, 1000)
       </div>
 
       <div class="flex flex-col gap-4 md:min-h-0 md:w-1/4 md:overflow-hidden">
-        <div class="ui-card flex shrink-0 flex-col rounded-lg p-3.5">
+        <div class="glass-card-lg flex shrink-0 flex-col p-3.5">
           <h3 class="mb-3 flex items-center gap-2 text-base font-medium 2xl:text-lg">
             <div class="i-carbon-hourglass" />
             <span>下次检查倒计时</span>
@@ -903,7 +907,7 @@ useIntervalFn(updateCountdowns, 1000)
           </div>
         </div>
 
-        <div class="ui-card min-h-0 flex flex-1 flex-col overflow-hidden rounded-lg p-4">
+        <div class="glass-card-lg min-h-0 flex flex-1 flex-col overflow-hidden p-4">
           <h3 class="mb-3 flex items-center gap-2 text-base font-medium 2xl:text-lg">
             <div class="i-carbon-chart-column" />
             <span>今日统计</span>
@@ -973,13 +977,11 @@ useIntervalFn(updateCountdowns, 1000)
 .game-card {
   position: relative;
   border-radius: 20px;
-  border: 1.5px solid rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   background: linear-gradient(165deg, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0.28) 100%);
-  box-shadow:
-    0 10px 28px rgba(31, 38, 80, 0.12),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(24px) saturate(1.35);
-  -webkit-backdrop-filter: blur(24px) saturate(1.35);
+  box-shadow: 0 10px 30px rgba(31, 38, 80, 0.1);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
 }
 
 /* 用户信息与资源/化肥/图鉴卡片同处一个毛玻璃面板 */
@@ -1128,12 +1130,19 @@ useIntervalFn(updateCountdowns, 1000)
   line-height: 1.3;
 }
 
+/* EXP 文字行与经验条视为一组，组内间距压紧 */
+.exp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
 .exp-bar-row {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 92%;
-  margin: 6px auto 0;
+  margin: 0 auto;
 }
 
 .exp-progress-bar {
@@ -1212,9 +1221,7 @@ useIntervalFn(updateCountdowns, 1000)
 
 .resource-card:hover {
   transform: translateY(-3px);
-  box-shadow:
-    0 14px 32px rgba(31, 38, 80, 0.16),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.95);
+  box-shadow: 0 14px 32px rgba(31, 38, 80, 0.16);
 }
 
 /* 各资源的柔和底色（半透明玻璃着色） */
@@ -1292,9 +1299,18 @@ useIntervalFn(updateCountdowns, 1000)
   filter: drop-shadow(0 3px 6px rgba(31, 38, 80, 0.15));
 }
 
+/* 图标单独占一列，并在该列内居中；文字独占剩余一列并居中 */
+.resource-icon-zone {
+  flex: 0 0 30%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .resource-info {
   flex: 1;
   min-width: 0;
+  text-align: center;
 }
 
 .resource-label {
@@ -1678,11 +1694,21 @@ useIntervalFn(updateCountdowns, 1000)
 }
 
 /* 原有区域 */
-/* 原首页的「运行日志」「今日统计」模块，沿用当前 UI 的卡片样式 */
+/* 原首页的「运行日志」「下次检查倒计时」「今日统计」，沿用首页大框的圆角磨砂玻璃样式 */
 .legacy-section {
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
+}
+
+/* 与首页大毛玻璃框（.glass-panel）完全同一套视觉参数，仅不设 padding */
+.glass-card-lg {
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 10px 30px rgba(31, 38, 80, 0.1);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
 }
 
 /* 响应式设计 */

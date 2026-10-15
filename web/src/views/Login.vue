@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useStorage } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
@@ -6,7 +7,6 @@ import AnnouncementPopup from '@/components/AnnouncementPopup.vue'
 import LoginModals from '@/components/login/LoginModals.vue'
 import PasswordStrengthMeter from '@/components/login/PasswordStrengthMeter.vue'
 import UpdateLogModal from '@/components/login/UpdateLogModal.vue'
-import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import { getPasswordStrength } from '@/composables/usePasswordStrength'
 import { useAppStore } from '@/stores/app'
@@ -33,6 +33,9 @@ const showPasswordStrength = ref(false)
 const lockoutRemaining = ref(0)
 const rateLimitRemaining = ref(0)
 const routeUsername = computed(() => String(route.query.username || '').trim())
+
+const rememberedUsername = useStorage('login_remembered_username', '')
+const rememberAccount = ref(!!rememberedUsername.value)
 
 const cardClaimEnabled = ref(true)
 const cardClaimStock = ref(0)
@@ -148,6 +151,7 @@ async function handleSubmit() {
     if (isLogin.value) {
       const result = await userStore.login(username.value, password.value)
       if (result.ok) {
+        rememberedUsername.value = rememberAccount.value ? username.value : ''
         if (result.data?.mustChangePassword) {
           success.value = '登录成功！请修改默认密码以确保账户安全'
         }
@@ -297,8 +301,6 @@ function closeResetVerifyModal() {
 }
 
 function closeResetPasswordModal() {
-  if (resetLoading.value)
-    return
   showResetPasswordModal.value = false
   resetNewPassword.value = ''
   resetConfirmPassword.value = ''
@@ -451,6 +453,20 @@ function closeClaimModal() {
 }
 
 onMounted(() => {
+  // 预加载登录页与首页背景图，避免登录成功跳转后背景短暂空白
+  const isMobile = window.matchMedia('(max-width: 768px)').matches
+  const bgList = isMobile
+    ? ['/backgrounds/mobile-login-bg.jpg', '/backgrounds/mobile-dashboard-bg.jpg']
+    : ['/backgrounds/pc-login-bg.jpg', '/backgrounds/pc-dashboard-bg.jpg']
+  for (const src of bgList) {
+    const img = new Image()
+    img.src = src
+  }
+
+  // 优先用 URL 里带的用户名，其次用「记住账号」保存的用户名
+  if (!username.value && rememberedUsername.value) {
+    username.value = rememberedUsername.value
+  }
   checkCardClaimStatus()
   fetchGameVersion()
   appStore.fetchLoginPageConfig()
@@ -470,62 +486,77 @@ async function fetchGameVersion() {
 </script>
 
 <template>
-  <div class="login-container">
-    <div class="bg-decoration" aria-hidden="true">
-      <div class="sky-gradient" />
-      <div class="ground-pattern" />
-      <div class="sun-decoration" />
-      <div class="plant-decoration plant-left" />
-      <div class="plant-decoration plant-right" />
+  <div class="login-page">
+    <!-- 背景图 -->
+    <div class="login-bg" aria-hidden="true" />
+
+    <!-- 顶部品牌栏 -->
+    <div class="top-brand-bar">
+      <div class="brand-block">
+        <div class="brand-title">
+          <span class="brand-leaf i-fas-leaf" />
+          <span class="brand-text">{{ loginLinks.title || 'QQ农场' }}</span>
+        </div>
+        <div class="brand-tagline">
+          种下希望 收获快乐
+        </div>
+      </div>
+      <div class="register-top">
+        <span>{{ isLogin ? '还没有账号？' : '已经有账号？' }}</span>
+        <a href="javascript:void(0)" @click="toggleMode">{{ isLogin ? '立即注册 >' : '立即登录 >' }}</a>
+      </div>
     </div>
 
-    <main class="login-card">
-      <div class="logo-area">
-        <div class="logo-icon">
+    <!-- 登录面板 -->
+    <main class="login-panel">
+      <div class="panel-header">
+        <div class="panel-logo">
           <img
             v-if="loginLinks.logoUrl && !logoLoadFailed"
             :src="loginLinks.logoUrl"
-            :alt="`${loginLinks.title || 'QQ农场智能助手'}图标`"
-            class="logo-image"
+            :alt="`${loginLinks.title || 'QQ农场'}图标`"
+            class="panel-logo-img"
             @error="logoLoadFailed = true"
           >
-          <div v-else class="i-carbon-home text-3xl" />
+          <div v-else class="i-fas-leaf text-xl text-white" />
         </div>
-        <h1 class="logo-title">
-          {{ loginLinks.title || 'QQ农场智能助手' }}
-        </h1>
-        <p class="logo-subtitle">
+        <div class="panel-brand">
+          {{ loginLinks.title || 'QQ农场' }}
+        </div>
+      </div>
+
+      <div class="welcome">
+        <h1>{{ isLogin ? '欢迎回来' : '创建账号' }}</h1>
+        <p>
           {{ isLogin
-            ? (loginLinks.loginSubtitle || '欢迎回来，开启智慧农耕之旅')
-            : (loginLinks.registerSubtitle || '创建账号，开启智慧农耕之旅') }}
+            ? (loginLinks.loginSubtitle || '登录后开启你的农场之旅')
+            : (loginLinks.registerSubtitle || '注册后开启你的农场之旅') }}
         </p>
       </div>
 
-      <form class="form-area" @submit.prevent="handleSubmit">
-        <div class="form-group">
-          <label class="form-label">
-            <span class="label-icon i-carbon-user" />
-            用户名
-          </label>
+      <form class="login-form" @submit.prevent="handleSubmit">
+        <div class="field">
+          <div class="field-icon">
+            <div class="field-icon-svg i-carbon-user" />
+          </div>
           <BaseInput
             id="username"
             v-model="username"
-            type="text"
-            placeholder="请输入用户名（3-32位字母数字下划线）"
+            placeholder="请输入账号"
             :autocomplete="isLogin ? 'username' : 'new-username'"
             :name="isLogin ? 'username' : 'register-username'"
+            class="field-input"
             required
           />
-          <p v-if="username && !usernameValid.valid" class="form-hint error">
-            {{ usernameValid.message }}
-          </p>
         </div>
+        <p v-if="username && !usernameValid.valid" class="form-hint error">
+          {{ usernameValid.message }}
+        </p>
 
-        <div class="form-group">
-          <label class="form-label">
-            <span class="label-icon i-carbon-password" />
-            密码
-          </label>
+        <div class="field">
+          <div class="field-icon">
+            <div class="field-icon-svg i-carbon-locked" />
+          </div>
           <BaseInput
             id="password"
             v-model="password"
@@ -533,38 +564,32 @@ async function fetchGameVersion() {
             placeholder="请输入密码"
             :autocomplete="isLogin ? 'current-password' : 'new-password'"
             :name="isLogin ? 'password' : 'register-password'"
+            class="field-input"
             required
           />
-          <PasswordStrengthMeter
-            v-if="showPasswordStrength && password"
-            :strength="passwordStrength"
-            compact
-          />
-          <div v-if="error" class="message error-message">
-            <span class="message-icon i-carbon-warning" />
-            <div class="message-content">
-              {{ error }}
-              <span v-if="lockoutRemaining > 0" class="lockout-timer">
-                ({{ lockoutRemaining }} 分钟后解锁)
-              </span>
-              <span v-if="rateLimitRemaining > 0" class="lockout-timer">
-                ({{ rateLimitRemaining }} 秒后可重试)
-              </span>
-            </div>
-          </div>
-          <div v-if="success" class="message success-message">
-            <span class="message-icon i-carbon-checkmark-filled" />
-            {{ success }}
-          </div>
         </div>
+        <PasswordStrengthMeter
+          v-if="showPasswordStrength && password"
+          :strength="passwordStrength"
+          compact
+        />
 
-        <div v-if="!isLogin" class="form-group">
-          <label class="form-label">
-            <span class="label-icon i-carbon-ticket" />
-            卡密
-          </label>
-
-          <div v-if="cardClaimEnabled" class="mb-2">
+        <template v-if="!isLogin">
+          <div class="field">
+            <div class="field-icon">
+              <div class="field-icon-svg i-carbon-ticket" />
+            </div>
+            <BaseInput
+              id="cardCode"
+              v-model="cardCode"
+              placeholder="请输入卡密"
+              autocomplete="off"
+              name="card-code"
+              class="field-input"
+              required
+            />
+          </div>
+          <div v-if="cardClaimEnabled" class="claim-row">
             <button
               type="button"
               class="claim-card-btn"
@@ -574,83 +599,101 @@ async function fetchGameVersion() {
               <span v-if="cardClaimLoading" class="i-svg-spinners-90-ring-with-bg" />
               <span v-else>免费领取卡密</span>
             </button>
-            <p v-if="cardClaimStock === 0" class="mt-1 text-[11px] text-amber-600">
+            <p v-if="cardClaimStock === 0" class="claim-stock-tip">
               当前无可用时间卡密，请联系管理员补充库存
             </p>
           </div>
-          <div v-else class="mb-2 text-xs text-gray-400">
+          <div v-else class="claim-stock-tip disabled">
             管理员未开启免费领卡，请使用已有卡密注册
           </div>
+        </template>
 
-          <BaseInput
-            id="cardCode"
-            v-model="cardCode"
-            type="text"
-            placeholder="请输入卡密"
-            autocomplete="off"
-            name="card-code"
-            :required="!isLogin"
-          />
+        <div v-if="isLogin" class="options">
+          <label class="remember">
+            <input v-model="rememberAccount" type="checkbox" class="remember-box">
+            <span>记住账号</span>
+          </label>
+          <a class="forgot" href="javascript:void(0)" @click="openResetVerifyModal">忘记密码?</a>
         </div>
 
-        <BaseButton
+        <div v-if="error" class="message error-message">
+          <span class="message-icon i-carbon-warning" />
+          <div class="message-content">
+            {{ error }}
+            <span v-if="lockoutRemaining > 0" class="lockout-timer">
+              ({{ lockoutRemaining }} 分钟后解锁)
+            </span>
+            <span v-if="rateLimitRemaining > 0" class="lockout-timer">
+              ({{ rateLimitRemaining }} 秒后可重试)
+            </span>
+          </div>
+        </div>
+        <div v-if="success" class="message success-message">
+          <span class="message-icon i-carbon-checkmark-filled" />
+          {{ success }}
+        </div>
+
+        <button
           type="submit"
-          variant="primary"
-          block
-          :loading="loading"
-          class="submit-btn"
+          class="login-btn"
+          :disabled="loading"
         >
-          <span v-if="!loading">{{ isLogin ? '登录' : '注册' }}</span>
-        </BaseButton>
+          <div v-if="loading" class="i-svg-spinners-ring-resize mr-2 text-base" />
+          <div v-else class="i-carbon-login mr-2 text-base" />
+          {{ isLogin ? '登录' : '注册' }}
+        </button>
       </form>
 
-      <div class="switch-area" :class="{ 'single-action': !isLogin }">
-        <button
-          type="button"
-          class="switch-btn"
-          @click="toggleMode"
-        >
-          {{ isLogin ? '立即注册' : '立即登录' }}
-        </button>
-        <div v-if="isLogin" class="login-quick-actions">
-          <button type="button" class="quick-action-btn" @click="openResetVerifyModal">
-            忘记密码
-          </button>
-          <button type="button" class="quick-action-btn" @click="openRenewal">
-            账号续费
-          </button>
-        </div>
+      <div class="divider">
+        <span>快捷入口</span>
       </div>
 
-      <div class="card-footer">
-        <div class="footer-info">
-          <a
-            v-if="loginLinks.purchaseUrl"
-            :href="loginLinks.purchaseUrl"
-            class="footer-link purchase-link"
-          >
-            购买卡密
-          </a>
-          <a
-            v-if="loginLinks.qqGroupUrl"
-            :href="loginLinks.qqGroupUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="footer-link qq-group-link"
-          >
-            加入QQ群
-          </a>
-          <button
-            type="button"
-            class="footer-link update-log-link"
-            @click="showUpdateLog = true"
-          >
-            更新日志
-          </button>
-        </div>
-        <div v-if="gameVersion" class="game-version">
-          当前游戏版本：{{ gameVersion }}
-        </div>
+      <div class="alt-row">
+        <button class="alt-btn" type="button" @click="openRenewal">
+          <div class="alt-circle alt-renew">
+            <div class="i-carbon-renew text-xl text-emerald-500" />
+          </div>
+          <span class="alt-text">账号续费</span>
+        </button>
+        <button class="alt-btn" type="button" @click="showUpdateLog = true">
+          <div class="alt-circle alt-log">
+            <div class="i-carbon-document text-xl text-amber-500" />
+          </div>
+          <span class="alt-text">更新日志</span>
+        </button>
+        <a
+          v-if="loginLinks.purchaseUrl"
+          class="alt-btn"
+          :href="loginLinks.purchaseUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <div class="alt-circle alt-buy">
+            <div class="i-carbon-shopping-cart text-xl text-sky-500" />
+          </div>
+          <span class="alt-text">购买卡密</span>
+        </a>
+        <a
+          v-if="loginLinks.qqGroupUrl"
+          class="alt-btn"
+          :href="loginLinks.qqGroupUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <div class="alt-circle alt-qq-group">
+            <div class="i-carbon-group text-xl text-sky-500" />
+          </div>
+          <span class="alt-text">加入QQ群</span>
+        </a>
+      </div>
+
+      <div class="footer">
+        <span>{{ isLogin ? '还没有账号？' : '已经有账号？' }}</span>
+        <a href="javascript:void(0)" @click="toggleMode">{{ isLogin ? '立即注册 >' : '立即登录 >' }}</a>
+      </div>
+
+      <div v-if="gameVersion" class="game-version">
+        当前游戏版本：{{ gameVersion }}
       </div>
     </main>
 
@@ -688,253 +731,305 @@ async function fetchGameVersion() {
 </template>
 
 <style scoped>
-.login-container {
+.login-page {
+  position: relative;
+  width: 100vw;
   min-height: 100vh;
-  width: 100%;
+  overflow: hidden;
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, #cfe8f9 0%, #edf7f9 48%, #fef9e8 55%, #eff8df 100%);
-  font-family:
-    'Noto Sans SC',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
-  position: relative;
-  overflow: hidden;
-  padding: 24px;
+  justify-content: flex-end;
 }
 
-.bg-decoration {
+/* 背景 */
+.login-bg {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  overflow: hidden;
+  z-index: 0;
+  background: url('/backgrounds/pc-login-bg.jpg') center/cover no-repeat;
 }
 
-.sky-gradient {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 56%;
-  background: linear-gradient(180deg, rgba(187, 222, 251, 0.42) 0%, rgba(255, 249, 230, 0.55) 100%);
+/* 移动端背景 */
+@media (max-width: 768px) {
+  .login-bg {
+    background: url('/backgrounds/mobile-login-bg.jpg') center/cover no-repeat;
+  }
 }
 
-.ground-pattern {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 45%;
-  opacity: 0.58;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(129, 199, 132, 0.04) 0,
-      rgba(129, 199, 132, 0.04) 40px,
-      rgba(255, 255, 255, 0.12) 40px,
-      rgba(255, 255, 255, 0.12) 80px
-    ),
-    linear-gradient(180deg, #f1f8e9 0%, #dcedc8 100%);
-}
-
-.sun-decoration {
-  position: absolute;
-  top: 8%;
-  right: 12%;
-  width: 78px;
-  height: 78px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 224, 130, 0.75) 0%, rgba(255, 213, 79, 0.44) 52%, transparent 72%);
-  filter: blur(1px);
-}
-
-.plant-decoration {
-  position: absolute;
-  bottom: 6%;
-  width: 72px;
-  height: 120px;
-  opacity: 0.18;
-}
-
-.plant-decoration::before,
-.plant-decoration::after {
-  content: '';
-  position: absolute;
-  border-radius: 999px 999px 999px 0;
-  background: #81c784;
-  transform-origin: bottom center;
-}
-
-.plant-decoration::before {
-  left: 28px;
-  bottom: 42px;
-  width: 28px;
-  height: 48px;
-  transform: rotate(34deg);
-}
-
-.plant-decoration::after {
-  left: 12px;
-  bottom: 46px;
-  width: 30px;
-  height: 44px;
-  transform: rotate(-36deg);
-}
-
-.plant-decoration {
-  background: linear-gradient(86deg, transparent 45%, #81c784 47%, #81c784 53%, transparent 55%) bottom center / 30px
-    76px no-repeat;
-}
-
-.plant-left {
-  left: 9%;
-}
-
-.plant-right {
-  right: 9%;
-  transform: scaleX(-1);
-}
-
-.login-card {
-  width: 100%;
-  max-width: 420px;
-  min-height: 620px;
-  padding: 46px 36px 34px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(102, 187, 106, 0.22);
-  border-radius: 18px;
-  box-shadow:
-    0 18px 56px rgba(46, 125, 50, 0.12),
-    0 8px 28px rgba(15, 23, 42, 0.08);
+/* 顶部品牌栏（移动端默认显示，桌面端在下方媒体查询里定位） */
+.top-brand-bar {
+  display: none;
   position: relative;
   z-index: 10;
-  backdrop-filter: blur(18px);
 }
 
-.logo-area {
+/* 登录面板 */
+.login-panel {
+  position: relative;
+  z-index: 10;
+  width: 380px;
+  max-width: calc(100% - 80px);
+  margin-right: 6%;
+  padding: 40px 36px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px rgba(31, 110, 140, 0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
-  text-align: center;
-  margin-bottom: 34px;
 }
 
-.logo-icon {
-  display: inline-flex;
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.panel-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00d26a 0%, #0099ff 100%);
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 74px;
-  height: 74px;
+  overflow: hidden;
   flex: 0 0 auto;
-  background: #e8f5e9;
-  border: 3px solid #66bb6a;
-  border-radius: 50%;
-  color: #43a047;
-  margin-bottom: 24px;
-  box-shadow: 0 6px 18px rgba(102, 187, 106, 0.16);
+  box-shadow: 0 4px 12px rgba(0, 210, 106, 0.3);
 }
 
-.logo-title {
-  color: #2e7d32;
-  font-size: 1.82rem;
-  font-weight: 700;
-  line-height: 1.2;
-  margin: 0;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-.logo-subtitle {
-  color: #757575;
-  font-size: 0.9rem;
-  margin: 10px 0 0;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-.logo-image {
+.panel-logo-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
 }
 
-.form-area {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
+.panel-brand {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c3e50;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
 }
 
-.login-card :deep(.base-input) {
-  min-height: 42px;
-  border-color: #d7dce2;
-  border-radius: 8px;
-  background: #fafafa;
-  padding: 10px 12px;
-  font-size: 0.94rem;
+/* 欢迎语 */
+.welcome {
+  text-align: center;
+  margin-bottom: 24px;
 }
 
-.login-card :deep(.base-input:focus) {
-  border-color: #66bb6a;
-  background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(102, 187, 106, 0.16);
+.welcome h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  letter-spacing: 0.03em;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.welcome p {
+  font-size: 13px;
+  color: #7f8c8d;
+  overflow-wrap: anywhere;
 }
 
-.form-label {
+/* 表单 */
+.login-form {
+  width: 100%;
+}
+
+/* 输入框：白色胶囊 */
+.field {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #558b2f;
+  height: 54px;
+  margin-bottom: 14px;
 }
 
-.label-icon {
-  color: #7cb342;
-  font-size: 1rem;
+.field-icon {
+  position: absolute;
+  left: 20px;
+  z-index: 5;
+  display: flex;
+  pointer-events: none;
 }
 
+.field-icon-svg {
+  font-size: 20px;
+  color: #334155;
+}
+
+/* 调整 BaseInput 自带眼睛按钮的位置与大小，对齐设计稿 */
+.field-input :deep(button) {
+  right: 20px;
+  display: flex;
+}
+
+.field-input :deep(.i-carbon-view),
+.field-input :deep(.i-carbon-view-off) {
+  width: 20px;
+  height: 20px;
+}
+
+.field-input {
+  width: 100%;
+}
+
+.field-input :deep(input) {
+  width: 100% !important;
+  height: 54px !important;
+  padding-left: 50px !important;
+  padding-right: 50px !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  box-shadow: 0 2px 10px rgba(31, 110, 140, 0.08) !important;
+  font-size: 15px !important;
+  color: #2c3e50 !important;
+  transition: box-shadow 0.3s ease !important;
+}
+
+.field-input :deep(input::placeholder) {
+  color: #9ca3af !important;
+}
+
+.field-input :deep(input:focus) {
+  outline: none !important;
+  box-shadow:
+    0 0 0 2px rgba(34, 197, 94, 0.45),
+    0 2px 10px rgba(31, 110, 140, 0.08) !important;
+}
+
+.field-input :deep(input:-webkit-autofill) {
+  -webkit-text-fill-color: #2c3e50 !important;
+}
+
+/* 用户名校验提示 */
 .form-hint {
-  font-size: 0.75rem;
+  font-size: 12px;
   color: #64748b;
-  margin-top: 4px;
+  margin: -8px 0 12px 20px;
 }
 
 .form-hint.error {
   color: #ef5350;
 }
 
-.lockout-timer {
-  display: block;
-  font-size: 0.75rem;
-  opacity: 0.8;
-  margin-top: 2px;
+/* 免费领卡 */
+.claim-row {
+  width: 100%;
+  margin-bottom: 14px;
 }
 
+.claim-card-btn {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed #34d399;
+  border-radius: 999px;
+  background: rgba(52, 211, 153, 0.12);
+  color: #059669;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.claim-card-btn:hover {
+  background: rgba(52, 211, 153, 0.2);
+}
+
+.claim-card-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.claim-stock-tip {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #d97706;
+  text-align: center;
+}
+
+.claim-stock-tip.disabled {
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* 记住账号 / 忘记密码 */
+.options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  color: #4b5563;
+}
+
+.remember-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  accent-color: #10b981;
+  cursor: pointer;
+}
+
+.forgot {
+  color: #4b5563;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.forgot:hover {
+  opacity: 0.7;
+}
+
+/* 提示信息 */
 .message {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 0.875rem;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
   line-height: 1.45;
+  margin-bottom: 14px;
 }
 
 .message-icon {
   flex: 0 0 auto;
-  font-size: 1rem;
+  font-size: 15px;
   margin-top: 1px;
+}
+
+.message-content {
+  min-width: 0;
+}
+
+.lockout-timer {
+  display: block;
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 2px;
 }
 
 .error-message {
@@ -949,193 +1044,325 @@ async function fetchGameVersion() {
   border: 1px solid #bbf7d0;
 }
 
-.submit-btn {
-  margin-top: 6px;
+/* 登录按钮：绿→蓝渐变胶囊 */
+.login-btn {
+  width: 100%;
   height: 52px;
-  font-size: 1rem;
-  font-weight: 700;
-  border-radius: 10px;
-  box-shadow: 0 8px 18px rgba(76, 175, 80, 0.32);
-  transition: all 0.25s ease;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #34d399 0%, #22c55e 45%, #3b82f6 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.5),
+    0 6px 18px rgba(16, 185, 129, 0.35);
 }
 
-.submit-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(76, 175, 80, 0.38);
+.login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.5),
+    0 8px 22px rgba(16, 185, 129, 0.4);
 }
 
-.submit-btn:active {
+.login-btn:active {
   transform: translateY(0);
 }
 
-.switch-area {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 22px;
-  text-align: center;
-}
-
-.switch-area.single-action {
-  grid-template-columns: 1fr;
-}
-
-.switch-btn {
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  color: #757575;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 12px 16px;
-  border-radius: 10px;
-  transition: all 0.2s ease;
-}
-
-.switch-btn:hover {
-  background: #f0fdf4;
-  border-color: #86efac;
-  color: #15803d;
-}
-
-.login-quick-actions {
-  display: contents;
-}
-
-.quick-action-btn {
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  color: #757575;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
-  padding: 12px 14px;
-  transition: all 0.2s ease;
-}
-
-.quick-action-btn:hover {
-  background: #f0fdf4;
-  color: #166534;
-}
-
-.card-footer {
-  text-align: center;
-  margin-top: 28px;
-  color: #94a3b8;
-  font-size: 0.8rem;
-}
-
-.footer-info {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 0.75rem;
-  color: #94a3b8;
-}
-
-.footer-link {
-  border-radius: 6px;
-  padding: 5px 10px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.footer-link:hover {
-  text-decoration: none;
-}
-
-.purchase-link {
-  color: #166534;
-  background: #dcfce7;
-  border: 1px solid #bbf7d0;
-}
-
-.purchase-link:hover {
-  background: #bbf7d0;
-}
-
-.qq-group-link {
-  color: #075985;
-  background: #e0f2fe;
-  border: 1px solid #bae6fd;
-}
-
-.qq-group-link:hover {
-  background: #bae6fd;
-}
-
-.update-log-link {
-  color: #854d0e;
-  background: #fef9c3;
-  border: 1px solid #fde047;
-  font-size: inherit;
-}
-
-.update-log-link:hover {
-  color: #713f12;
-  background: #fef08a;
-}
-
-.game-version {
-  margin-top: 8px;
-  font-size: 0.7rem;
-  color: #94a3b8;
-  text-align: center;
-}
-
-.claim-card-btn {
-  width: 100%;
-  padding: 9px 14px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 8px;
-  color: #15803d;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.claim-card-btn:hover {
-  border-color: #86efac;
-  background: #dcfce7;
-}
-
-.claim-card-btn:disabled {
+.login-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-@media (max-width: 480px) {
-  .login-container {
+/* 分隔线 */
+.divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  margin: 24px 0 20px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e8e8e8;
+}
+
+.divider span {
+  padding: 0 16px;
+  font-size: 12px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+/* 快捷入口 */
+.alt-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.alt-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.2s;
+}
+
+.alt-btn:hover {
+  transform: translateY(-2px);
+}
+
+.alt-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px rgba(31, 110, 140, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.alt-text {
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+/* 底部注册入口 */
+.footer {
+  text-align: center;
+  font-size: 14px;
+}
+
+.footer span {
+  color: #7f8c8d;
+}
+
+.footer a {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.footer a:hover {
+  opacity: 0.7;
+}
+
+.game-version {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* 移动端 */
+@media (max-width: 768px) {
+  .login-page {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
+  /* 顶部：左上 Logo，右上注册入口 */
+  .top-brand-bar {
+    display: flex;
+    width: 100%;
     align-items: flex-start;
-    padding: 16px;
+    justify-content: space-between;
+    padding: 52px 24px 0;
   }
 
-  .login-card {
-    padding: 24px;
-    border-radius: 14px;
+  .brand-block {
+    display: flex;
+    flex-direction: column;
   }
 
-  .logo-icon {
-    width: 46px;
-    height: 46px;
+  .brand-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
-  .logo-title {
-    font-size: 1.25rem;
+  .brand-leaf {
+    font-size: 30px;
+    color: #fff;
+    filter: drop-shadow(0 3px 5px rgba(23, 78, 122, 0.35));
   }
 
-  .plant-decoration {
+  .brand-text {
+    font-size: 36px;
+    font-weight: 900;
+    font-style: italic;
+    color: #fff;
+    letter-spacing: 2px;
+    text-shadow:
+      0 3px 0 rgba(30, 84, 132, 0.65),
+      0 6px 14px rgba(30, 84, 132, 0.55),
+      0 10px 26px rgba(30, 84, 132, 0.45);
+  }
+
+  .brand-tagline {
+    margin-top: 2px;
+    padding-left: 42px;
+    font-size: 15px;
+    font-weight: 600;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.98);
+    letter-spacing: 0.22em;
+    text-shadow:
+      0 2px 0 rgba(30, 84, 132, 0.6),
+      0 4px 12px rgba(30, 84, 132, 0.5);
+  }
+
+  .register-top {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    padding-top: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: right;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow:
+      0 2px 0 rgba(30, 84, 132, 0.55),
+      0 3px 10px rgba(30, 84, 132, 0.5);
+  }
+
+  .register-top a {
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    text-decoration: none;
+  }
+
+  /* 登录卡：白色磨砂大圆角，内容拉伸 */
+  .login-panel {
+    width: calc(100% - 32px);
+    max-width: 420px;
+    margin: 26px 0 36px;
+    padding: 28px 24px 30px;
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 14px 40px rgba(31, 110, 140, 0.18);
+    align-items: stretch;
+  }
+
+  .panel-header {
     display: none;
+  }
+
+  .welcome {
+    text-align: left;
+    margin-bottom: 20px;
+  }
+
+  .welcome h1 {
+    font-size: 26px;
+    color: #1f2937;
+    margin-bottom: 6px;
+  }
+
+  .welcome p {
+    font-size: 14px;
+    color: #6b7280;
+  }
+
+  .footer {
+    display: none;
+  }
+}
+
+/* 桌面端：顶部品牌栏绝对定位 */
+@media (min-width: 769px) {
+  .top-brand-bar {
+    display: flex;
+    position: absolute;
+    top: 30px;
+    left: 40px;
+    right: 40px;
+    z-index: 10;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0;
+  }
+
+  .brand-block {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .brand-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .brand-leaf {
+    font-size: 24px;
+    color: #fff;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+  }
+
+  .brand-text {
+    font-size: 28px;
+    font-weight: 900;
+    font-style: italic;
+    color: #fff;
+    letter-spacing: 2px;
+    text-shadow:
+      0 2px 0 rgba(30, 84, 132, 0.6),
+      0 5px 14px rgba(30, 84, 132, 0.5),
+      0 10px 24px rgba(30, 84, 132, 0.4);
+  }
+
+  .brand-tagline {
+    margin-top: 2px;
+    padding-left: 34px;
+    font-size: 13px;
+    font-weight: 600;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.95);
+    letter-spacing: 0.2em;
+    text-shadow:
+      0 2px 0 rgba(30, 84, 132, 0.55),
+      0 4px 12px rgba(30, 84, 132, 0.5);
+  }
+
+  .register-top {
+    padding-top: 8px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .register-top a {
+    color: #fff;
+    font-weight: 500;
+    text-decoration: none;
   }
 }
 </style>

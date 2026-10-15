@@ -474,19 +474,19 @@ async function handleLogout() {
   justify-content: center;
   border-radius: 14px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 4px 14px rgba(31, 38, 80, 0.12);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 10px 30px rgba(31, 38, 80, 0.1);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
   color: #4b5563;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .account-trigger:hover {
-  background: #fff;
-  box-shadow: 0 6px 18px rgba(31, 38, 80, 0.16);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 10px 30px rgba(31, 38, 80, 0.16);
 }
 
 .account-trigger-arrow {

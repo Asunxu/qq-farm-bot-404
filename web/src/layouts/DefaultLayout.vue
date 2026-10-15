@@ -187,6 +187,19 @@ function onSearchBlur() {
   position: relative;
 }
 
+/* 顶栏圆形图标按钮（主题 / 活动）：与首页毛玻璃框同一套视觉，圆角保持圆形 */
+header :deep(.icon-btn) {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 10px 30px rgba(31, 38, 80, 0.1);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+header :deep(.icon-btn:hover) {
+  background: rgba(255, 255, 255, 0.55);
+}
+
 /* PC 搜索框 */
 .search-box {
   display: flex;

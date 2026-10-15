@@ -122,6 +122,9 @@ export const useUserStore = defineStore('user', () => {
 
   // 获取过期时间显示
   const expireTimeText = computed(() => {
+    // 管理员账号没有卡密，按永久有效展示
+    if (isAdmin.value && !userInfo.value?.card)
+      return '永久有效'
     if (!userInfo.value?.card)
       return '无卡密'
     if (userInfo.value.card.isPermanent === true || userInfo.value.card.days === -1)
