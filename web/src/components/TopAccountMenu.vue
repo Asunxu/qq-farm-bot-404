@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import api from '@/api'
 import AccountCareerModal from '@/components/AccountCareerModal.vue'
 import AccountModal from '@/components/AccountModal.vue'
+import PasswordModal from '@/components/PasswordModal.vue'
 import RemarkModal from '@/components/RemarkModal.vue'
 import { getPlatformClass, getPlatformLabel, useAccountStore } from '@/stores/account'
 import { useStatusStore } from '@/stores/status'
@@ -22,6 +23,7 @@ const showAccountDropdown = ref(false)
 const showAccountModal = ref(false)
 const showRemarkModal = ref(false)
 const showCareerModal = ref(false)
+const showPasswordModal = ref(false)
 const careerLoading = ref(false)
 const careerError = ref('')
 const careerItems = ref<any[]>([])
@@ -256,6 +258,11 @@ function navigateToSystemSettings() {
   router.push('/admin?tab=system')
 }
 
+function openPasswordModal() {
+  closeDropdown()
+  showPasswordModal.value = true
+}
+
 async function handleLogout() {
   closeDropdown()
   try {
@@ -406,6 +413,15 @@ async function handleLogout() {
             <div class="i-carbon-add-alt" />
             <span>管理账号</span>
           </router-link>
+          <button
+            type="button"
+            class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-gray-100/50 dark:hover:bg-gray-700/50"
+            :style="{ color: 'var(--theme-primary)' }"
+            @click="openPasswordModal"
+          >
+            <div class="i-carbon-password" />
+            <span>修改密码</span>
+          </button>
         </div>
         <div class="mt-1 border-t border-gray-100 pt-1 dark:border-gray-700">
           <button
@@ -454,6 +470,11 @@ async function handleLogout() {
         :error="careerError"
         @close="showCareerModal = false"
         @refresh="loadCareer"
+      />
+
+      <PasswordModal
+        :show="showPasswordModal"
+        @close="showPasswordModal = false"
       />
     </Teleport>
   </div>
