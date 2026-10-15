@@ -39,6 +39,9 @@ export default defineConfig({
       collections: {
         carbon: () => import('@iconify-json/carbon/icons.json').then(i => i.default),
         fas: () => import('@iconify-json/fa-solid/icons.json').then(i => i.default),
+        // 别名：代码里有 menu.ts / Pet.vue / Activity.vue 使用 i-fa-solid-paw 这类写法，
+        // 只注册 fas 前缀时这些类不会生成任何 CSS，图标会静默消失。
+        'fa-solid': () => import('@iconify-json/fa-solid/icons.json').then(i => i.default),
         fab: () => import('@iconify-json/fa-brands/icons.json').then(i => i.default),
         'svg-spinners': () => import('@iconify-json/svg-spinners/icons.json').then(i => i.default),
       },
