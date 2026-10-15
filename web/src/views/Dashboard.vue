@@ -1028,16 +1028,19 @@ useIntervalFn(updateCountdowns, 1000)
   font-family: 'DM Mono', 'Courier New', monospace;
 }
 
-/* 窄屏：状态行换到用户信息下方，避免挤压昵称 */
+/* 窄屏：状态行保持与昵称同一行（右上角），仅压缩字号与间距，避免挤压昵称 */
 @media (max-width: 480px) {
-  .user-info-row {
-    flex-wrap: wrap;
+  .home-status {
+    gap: 8px;
   }
 
-  .home-status {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-end;
+  .status-text {
+    font-size: 13px;
+  }
+
+  .home-status-uptime {
+    gap: 4px;
+    font-size: 11px;
   }
 }
 
