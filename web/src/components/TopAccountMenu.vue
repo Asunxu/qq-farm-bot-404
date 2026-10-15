@@ -217,6 +217,11 @@ function updateDropdownPos() {
 
 function onMenuFocusout(event: FocusEvent) {
   const next = event.relatedTarget as Node | null
+  // iOS Safari 点击按钮不会让按钮获得焦点，relatedTarget 为 null。
+  // 若此时关闭，click 还没落到账号按钮上菜单就被卸载，表现为「点不动、切不了账号」。
+  // 点击菜单外区域由下层透明遮罩的 @click 负责关闭。
+  if (!next)
+    return
   if (!menuSurface.value?.contains(next) && !triggerRef.value?.contains(next))
     showAccountDropdown.value = false
 }
