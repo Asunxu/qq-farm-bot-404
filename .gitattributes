@@ -5,5 +5,7 @@ web/src/App.vue merge=ours
 web/src/style.css merge=ours
 web/src/layouts/DefaultLayout.vue merge=ours
 web/src/components/game/** merge=ours
+# 承载 fork 专属的管理员入口（设置公告）与退出登录，需保留本仓库版本
+web/src/components/TopAccountMenu.vue merge=ours
 web/public/backgrounds/** merge=ours
 web/public/dashboard/** merge=ours

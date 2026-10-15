@@ -2,15 +2,19 @@
 import type { Account } from '@/stores/account'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/api'
 import AccountCareerModal from '@/components/AccountCareerModal.vue'
 import AccountModal from '@/components/AccountModal.vue'
 import RemarkModal from '@/components/RemarkModal.vue'
 import { getPlatformClass, getPlatformLabel, useAccountStore } from '@/stores/account'
 import { useStatusStore } from '@/stores/status'
+import { useUserStore } from '@/stores/user'
 
+const router = useRouter()
 const accountStore = useAccountStore()
 const statusStore = useStatusStore()
+const userStore = useUserStore()
 const { visibleAccounts, currentAccount } = storeToRefs(accountStore)
 const { currentStatusReady, status } = storeToRefs(statusStore)
 
@@ -240,6 +244,23 @@ async function handleAccountSaved() {
   showRemarkModal.value = false
   accountToEdit.value = null
 }
+
+// 管理员入口（「设置公告」）与「退出登录」融合进本下拉菜单
+function navigateToSystemSettings() {
+  closeDropdown()
+  router.push('/admin?tab=system')
+}
+
+async function handleLogout() {
+  closeDropdown()
+  try {
+    await userStore.logout()
+  }
+  catch {
+    // 即使请求失败也清除本地状态并跳转
+  }
+  router.push('/login')
+}
 </script>
 
 <template>
@@ -380,6 +401,26 @@ async function handleAccountSaved() {
             <div class="i-carbon-add-alt" />
             <span>管理账号</span>
           </router-link>
+        </div>
+        <div class="mt-1 border-t border-gray-100 pt-1 dark:border-gray-700">
+          <button
+            v-if="userStore.isAdmin"
+            type="button"
+            class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-gray-100/50 dark:hover:bg-gray-700/50"
+            :style="{ color: 'var(--theme-primary)' }"
+            @click="navigateToSystemSettings"
+          >
+            <div class="i-carbon-notification" />
+            <span>设置公告</span>
+          </button>
+          <button
+            type="button"
+            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20"
+            @click="handleLogout"
+          >
+            <div class="i-carbon-logout" />
+            <span>退出登录</span>
+          </button>
         </div>
       </div>
     </Teleport>

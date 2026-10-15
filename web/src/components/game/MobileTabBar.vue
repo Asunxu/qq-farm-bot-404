@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import NavMoreMenu from '@/components/game/NavMoreMenu.vue'
 import { menuRoutes } from '@/router/menu'
@@ -11,7 +12,9 @@ const userStore = useUserStore()
 const accountStore = useAccountStore()
 const { currentAccount } = storeToRefs(accountStore)
 
-const primaryItems = [
+// 必须是 computed：userStore.isAdmin 在 fetchUserInfo() 返回后才为真，
+// 若在 setup 阶段一次性求值，会永久丢失「后台」等管理员入口。
+const primaryItems = computed(() => [
   { path: '/', label: '首页', icon: 'i-fas-home' },
   { path: '/personal', label: '农场', icon: 'i-carbon-sprout' },
   { path: '/friends', label: '朋友', icon: 'i-carbon-user-multiple' },
@@ -19,16 +22,16 @@ const primaryItems = [
 ].filter((item) => {
   const target = menuRoutes.find(menu => `/${menu.path}` === item.path || (item.path === '/' && menu.path === ''))
   return !target?.adminOnly || userStore.isAdmin
-})
+}))
 
-const moreItems = menuRoutes
+const moreItems = computed(() => menuRoutes
   .filter(item => !['dashboard', 'personal', 'friends', 'activity'].includes(item.name))
   .filter(item => !item.adminOnly || userStore.isAdmin)
   .map(item => ({
     path: item.path ? `/${item.path}` : '/',
     label: item.label,
     icon: item.icon,
-  }))
+  })))
 </script>
 
 <template>
