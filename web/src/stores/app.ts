@@ -44,7 +44,9 @@ export const useAppStore = defineStore('app', () => {
     'light-blue': {
       name: '田园绿',
       isDark: false,
-      bg: 'transparent',
+      // 不能设为 transparent：弹窗面板（如添加账号）用 var(--theme-bg) 做实底，
+      // 透明会让弹窗变成「透明窗口」（iOS 上尤其明显）。页面背景由 --app-bg/--app-canvas 负责。
+      bg: '#f8fcf6',
       text: '#2C3E50',
       primary: '#2ECC71',
       secondary: '#3498DB',
@@ -54,7 +56,7 @@ export const useAppStore = defineStore('app', () => {
     'dark-blue': {
       name: '暮色林',
       isDark: true,
-      bg: 'transparent',
+      bg: '#0f172a',
       text: '#ECF0F1',
       primary: '#2ECC71',
       secondary: '#3498DB',
