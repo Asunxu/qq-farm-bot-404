@@ -702,8 +702,8 @@ useIntervalFn(updateCountdowns, 1000)
   <div class="flex flex-col gap-5 pt-1 md:pt-2">
     <!-- 游戏化首页（移植自参考项目） -->
     <div class="game-home">
-      <!-- 用户信息卡片 -->
-      <div class="game-card user-card">
+      <!-- 用户信息 + 资源 / 化肥 / 图鉴（合并为同一个毛玻璃面板；卡片一行 4 个，共 2 行） -->
+      <div class="glass-panel home-panel">
         <div class="user-info-row">
           <img :src="currentAccount?.avatar || '/icon.svg'" alt="用户头像" class="user-avatar-large">
           <div class="user-details">
@@ -729,10 +729,7 @@ useIntervalFn(updateCountdowns, 1000)
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 资源 / 化肥 / 图鉴 卡片网格（毛玻璃面板；一行 4 个，共 2 行） -->
-      <div class="glass-panel">
         <div class="resource-cards">
           <div
             v-for="res in resourceCards"
@@ -1202,9 +1199,11 @@ useIntervalFn(updateCountdowns, 1000)
   -webkit-backdrop-filter: blur(24px) saturate(1.35);
 }
 
-/* 用户信息卡片 */
-.user-card {
-  padding: 18px 20px;
+/* 用户信息与资源/化肥/图鉴卡片同处一个毛玻璃面板 */
+.home-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .user-info-row {
@@ -1796,23 +1795,23 @@ useIntervalFn(updateCountdowns, 1000)
   }
 
   .resource-card {
-    padding: 10px;
-    gap: 8px;
-    min-height: 76px;
+    padding: 8px;
+    gap: 6px;
+    min-height: 66px;
   }
 
   .resource-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 11px;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  .resource-label {
+    font-size: 12px;
   }
 
   .resource-amount {
-    font-size: 16px;
-  }
-
-  .user-card {
-    padding: 14px 16px;
+    font-size: 14px;
   }
 
   .user-avatar-large {
@@ -1861,8 +1860,8 @@ useIntervalFn(updateCountdowns, 1000)
 
   .resource-card {
     padding: 6px;
-    gap: 5px;
-    min-height: 60px;
+    gap: 4px;
+    min-height: 56px;
     border-radius: 14px;
   }
 
@@ -1875,8 +1874,8 @@ useIntervalFn(updateCountdowns, 1000)
   }
 
   .resource-icon {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     border-radius: 8px;
   }
 

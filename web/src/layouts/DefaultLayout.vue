@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import { useIntervalFn } from '@vueuse/core'
 import api from '@/api'
 import AnnouncementPopup from '@/components/AnnouncementPopup.vue'
-import MobileTabBar from '@/components/game/MobileTabBar.vue'
+import NavMenuButton from '@/components/game/NavMenuButton.vue'
 import MysteryMerchantBanner from '@/components/shop/MysteryMerchantBanner.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import TopAccountMenu from '@/components/TopAccountMenu.vue'
@@ -121,8 +121,10 @@ function onSearchBlur() {
     <div class="dashboard-bg" />
 
     <main class="relative h-full min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden">
-      <!-- 顶栏：右侧搜索 / 主题 / 通知 / 账号 -->
-      <header class="relative z-30 flex shrink-0 items-center justify-end gap-4 px-4 pt-4 sm:px-6 lg:px-8 lg:pt-5">
+      <!-- 顶栏：左侧导航菜单按钮，右侧搜索 / 主题 / 通知 / 账号 -->
+      <header class="relative z-30 flex shrink-0 items-center justify-between gap-4 px-4 pt-4 sm:px-6 lg:px-8 lg:pt-5">
+        <NavMenuButton />
+
         <div class="flex items-center gap-4">
           <div class="search-box relative hidden lg:flex">
             <div class="search-icon i-carbon-search" />
@@ -165,7 +167,7 @@ function onSearchBlur() {
       </header>
 
       <!-- Main Content Area -->
-      <div class="custom-scrollbar min-h-0 flex flex-1 flex-col overflow-y-auto p-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:p-6 md:pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:p-7 lg:pt-4 lg:pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+      <div class="custom-scrollbar min-h-0 flex flex-1 flex-col overflow-y-auto p-3 pb-6 sm:p-4 sm:pb-6 md:p-6 md:pb-8 lg:p-7 lg:pt-4 lg:pb-8">
         <MysteryMerchantBanner />
         <RouterView v-slot="{ Component, route }">
           <Transition name="slide-fade" mode="out-in">
@@ -175,7 +177,6 @@ function onSearchBlur() {
       </div>
     </main>
 
-    <MobileTabBar />
     <AnnouncementPopup />
   </div>
 </template>
