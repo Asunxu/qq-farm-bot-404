@@ -93,7 +93,7 @@ function unlockLevel(r: any) {
   min-height: 0;
   min-width: 0;
   box-sizing: border-box;
-  padding: 11cqw 5cqw 5cqw;
+  padding: calc(11 * var(--milk-u)) calc(5 * var(--milk-u)) calc(5 * var(--milk-u));
   background: url('/activity/milk-tea/img_s4_popBg1.png') center / 100% 100% no-repeat;
   color: #966747;
   font-weight: 800;
@@ -113,9 +113,9 @@ function unlockLevel(r: any) {
 }
 h2 {
   flex: none;
-  margin: 0 12% 4cqw;
+  margin: 0 12% calc(4 * var(--milk-u));
   text-align: center;
-  font-size: 5.5cqw;
+  font-size: calc(5.5 * var(--milk-u));
   color: #635d49;
   line-height: 1.5;
   background: url('/activity/milk-tea/img_s4_titleBg.png') center / 100% 100% no-repeat;
@@ -126,25 +126,25 @@ h2 {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 1.5cqw 0 3cqw;
+  padding: calc(1.5 * var(--milk-u)) 0 calc(3 * var(--milk-u));
   scrollbar-width: thin;
   scrollbar-color: #c3a47b transparent;
   mask-image: linear-gradient(#000 96%, transparent);
 }
 .recipe-card {
   position: relative;
-  min-height: 38cqw;
-  margin-bottom: 2.6cqw;
-  padding: 3cqw 1.8cqw 1.5cqw;
+  min-height: calc(38 * var(--milk-u));
+  margin-bottom: calc(2.6 * var(--milk-u));
+  padding: calc(3 * var(--milk-u)) calc(1.8 * var(--milk-u)) calc(1.5 * var(--milk-u));
   box-sizing: border-box;
   background: url('/activity/milk-tea/img_s4TeaMaker_bg4.png') center / 100% 100% no-repeat;
 }
 .recipe-name {
   position: absolute;
-  top: -2cqw;
-  left: 2cqw;
-  width: 21cqw;
-  height: 6.4cqw;
+  top: calc(-2 * var(--milk-u));
+  left: calc(2 * var(--milk-u));
+  width: calc(21 * var(--milk-u));
+  height: calc(6.4 * var(--milk-u));
   object-fit: contain;
   z-index: 1;
 }
@@ -152,11 +152,11 @@ h2 {
   display: grid;
   grid-template-columns: 32% 36% 32%;
   align-items: center;
-  min-height: 17cqw;
+  min-height: calc(17 * var(--milk-u));
 }
 .drink-picture {
   position: relative;
-  height: 17cqw;
+  height: calc(17 * var(--milk-u));
   background: url('/activity/milk-tea/img_s4TeaMaker_shadow.png') center bottom / 65% auto no-repeat;
 }
 .drink-picture > img {
@@ -169,8 +169,8 @@ h2 {
 }
 .drink-picture > .lock {
   position: absolute;
-  width: 4cqw;
-  height: 5cqw;
+  width: calc(4 * var(--milk-u));
+  height: calc(5 * var(--milk-u));
   left: 40%;
   top: 40%;
 }
@@ -178,70 +178,70 @@ h2 {
 .recipe-estimate {
   display: flex;
   flex-direction: column;
-  gap: 0.8cqw;
-  font-size: 2.9cqw;
+  gap: calc(0.8 * var(--milk-u));
+  font-size: calc(2.9 * var(--milk-u));
   min-width: 0;
 }
 .recipe-price b {
   display: flex;
   align-items: center;
-  gap: 0.7cqw;
+  gap: calc(0.7 * var(--milk-u));
   color: #805438;
   overflow-wrap: anywhere;
 }
 .recipe-price img {
-  width: 4cqw;
-  height: 3.4cqw;
+  width: calc(4 * var(--milk-u));
+  height: calc(3.4 * var(--milk-u));
   object-fit: contain;
 }
 .coin {
   display: inline-grid;
   place-items: center;
-  width: 3.4cqw;
-  height: 3.4cqw;
+  width: calc(3.4 * var(--milk-u));
+  height: calc(3.4 * var(--milk-u));
   border-radius: 50%;
   background: #ffc52e;
-  border: 0.3cqw solid #efa01c;
+  border: calc(0.3 * var(--milk-u)) solid #efa01c;
   color: #b87616;
-  font-size: 1.1cqw;
+  font-size: calc(1.1 * var(--milk-u));
 }
 .recipe-estimate {
   text-align: center;
   align-self: start;
-  padding-top: 2cqw;
+  padding-top: calc(2 * var(--milk-u));
 }
 .recipe-estimate strong {
-  margin-top: 1cqw;
+  margin-top: calc(1 * var(--milk-u));
   color: #89472d;
-  font-size: 4.5cqw;
+  font-size: calc(4.5 * var(--milk-u));
 }
 .recipe-estimate small {
-  font-size: 3cqw;
-  margin-left: 0.4cqw;
+  font-size: calc(3 * var(--milk-u));
+  margin-left: calc(0.4 * var(--milk-u));
 }
 .recipe-empty {
   display: grid;
   place-items: center;
-  min-height: 14.5cqw;
+  min-height: calc(14.5 * var(--milk-u));
   margin: 0;
   color: #b39a62;
-  font-size: 2.8cqw;
+  font-size: calc(2.8 * var(--milk-u));
   text-align: center;
 }
 .fruit-list {
   display: flex;
-  gap: 1.5cqw;
+  gap: calc(1.5 * var(--milk-u));
   flex-wrap: wrap;
-  min-height: 14.5cqw;
-  padding: 1cqw;
+  min-height: calc(14.5 * var(--milk-u));
+  padding: calc(1 * var(--milk-u));
 }
 .fruit-choice {
   position: relative;
-  width: 12cqw;
-  height: 12cqw;
-  padding: 1cqw;
+  width: calc(12 * var(--milk-u));
+  height: calc(12 * var(--milk-u));
+  padding: calc(1 * var(--milk-u));
   background: url('/activity/milk-tea/img_s4TeaMaker_itemBg.png') center / 100% 100% no-repeat;
-  font-size: 2cqw;
+  font-size: calc(2 * var(--milk-u));
 }
 .fruit-choice.selected::after {
   content: '';
@@ -257,8 +257,8 @@ h2 {
 }
 .fruit-choice b {
   position: absolute;
-  bottom: 0.8cqw;
-  right: 1cqw;
+  bottom: calc(0.8 * var(--milk-u));
+  right: calc(1 * var(--milk-u));
   color: #805438;
 }
 .craft-footer {
@@ -267,15 +267,15 @@ h2 {
   display: grid;
   grid-template-columns: 23% 50% 27%;
   align-items: center;
-  padding: 2cqw 0 3cqw;
-  font-size: 3.6cqw;
+  padding: calc(2 * var(--milk-u)) 0 calc(3 * var(--milk-u));
+  font-size: calc(3.6 * var(--milk-u));
   color: #a36545;
 }
 .craft-confirm {
-  height: 12cqw;
+  height: calc(12 * var(--milk-u));
   padding: 0;
   font-weight: 900;
-  font-size: 4.4cqw;
+  font-size: calc(4.4 * var(--milk-u));
   background: url('/activity/milk-tea/img_s4_btn0.png') center / 100% 100% no-repeat;
   color: #665e4c;
 }
@@ -287,16 +287,16 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: end;
-  gap: 1cqw;
+  gap: calc(1 * var(--milk-u));
   cursor: pointer;
 }
 .select-all input {
   appearance: none;
-  width: 4.5cqw;
-  height: 4.5cqw;
+  width: calc(4.5 * var(--milk-u));
+  height: calc(4.5 * var(--milk-u));
   margin: 0;
-  border: 0.3cqw solid #bc885d;
-  border-radius: 0.5cqw;
+  border: calc(0.3 * var(--milk-u)) solid #bc885d;
+  border-radius: calc(0.5 * var(--milk-u));
   background: #a76c49;
 }
 .select-all input:checked {
@@ -304,10 +304,10 @@ h2 {
 }
 .craft-error {
   flex: 0 0 auto;
-  max-height: 9cqw;
+  max-height: calc(9 * var(--milk-u));
   overflow: auto;
-  margin: -2cqw 0 1cqw;
-  font-size: 2.5cqw;
+  margin: calc(-2 * var(--milk-u)) 0 calc(1 * var(--milk-u));
+  font-size: calc(2.5 * var(--milk-u));
   color: #ac3528;
 }
 </style>

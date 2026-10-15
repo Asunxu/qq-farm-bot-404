@@ -1,11 +1,29 @@
-# 自定义前端 UI：与上游 xxxscarlxrd404/qq-farm-bot 同步（git merge upstream/main）时，
-# 这些路径始终保留本仓库版本，避免被上游改掉。
+# ===== 自定义前端 UI 保护规则 =====
+# 与上游 xxxscarlxrd404/qq-farm-bot 同步（git merge upstream/main）时，本仓库的自定义前端 UI
+# 一律以本地为准；只有上游「功能性新增/删减」牵动的那个 UI 元素才允许变动，其余 UI 一律不动。
 # 需要 .github/workflows/sync-upstream.yml 在合并前执行：git config merge.ours.driver true
+#
+# 第一层【硬锁 merge=ours】：纯视觉层文件与资源。上游对这些路径的改动永远不会进入本仓库，
+# 也不会产生冲突，本仓库版本是唯一来源。以后新增的自定义视觉文件请加到这里。
 web/src/App.vue merge=ours
 web/src/style.css merge=ours
 web/src/layouts/DefaultLayout.vue merge=ours
 web/src/components/game/** merge=ours
+web/src/components/ui/BaseInput.vue merge=ours
+web/src/components/Sidebar.vue merge=ours
+web/src/components/ThemeToggle.vue merge=ours
 # 承载 fork 专属的管理员入口（设置公告）与退出登录，需保留本仓库版本
 web/src/components/TopAccountMenu.vue merge=ours
+# fork 专属：预加载首页背景图
+web/index.html merge=ours
 web/public/backgrounds/** merge=ours
 web/public/dashboard/** merge=ours
+#
+# 第二层【不硬锁，按规则解决冲突】：含功能逻辑的前端文件，例如
+# views/*.vue（Dashboard、Activity、Shop、Settings…）、components/activity/**、
+# components/admin/**、stores/**、router/**、composables/**、uno.config.ts。
+# 上游改动正常合并；一旦冲突，按以下优先级人工解决：
+#   1) <style> 与页面布局/视觉结构：保留本仓库版本，不接受上游改动；
+#   2) 只有上游本次是「功能性新增/删减」牵动的那个 UI 元素，才并入这部分改动；
+#   3) 数据、接口、协议等功能逻辑：正常并入上游。
+
