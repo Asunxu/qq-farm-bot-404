@@ -11,6 +11,7 @@ import { getPlatformClass, getPlatformLabel, useAccountStore } from '@/stores/ac
 import { useBagStore } from '@/stores/bag'
 import { useStatusStore } from '@/stores/status'
 import { useToastStore } from '@/stores/toast'
+import { useUserStore } from '@/stores/user'
 import { formatCouponAmount, formatGoldAmount, formatGoldBeanAmount } from '@/utils/number-format'
 import { compactRuntimeLogs, matchesRuntimeLog, normalizeRuntimeLog } from '@/utils/runtime-log'
 
@@ -18,6 +19,7 @@ const statusStore = useStatusStore()
 const accountStore = useAccountStore()
 const bagStore = useBagStore()
 const toastStore = useToastStore()
+const userStore = useUserStore()
 
 const {
   status,
@@ -28,6 +30,7 @@ const {
 } = storeToRefs(statusStore)
 const { currentAccountId, currentAccount } = storeToRefs(accountStore)
 const { dashboardItems } = storeToRefs(bagStore)
+const { expireTimeText } = storeToRefs(userStore)
 
 const logContainer = ref<HTMLElement | null>(null)
 const autoScroll = ref(true)
@@ -179,27 +182,6 @@ const expRate = computed(() => {
     return '0/小时'
   const rate = gain / (uptime / 3600)
   return `${Math.floor(rate)}/小时`
-})
-
-const timeToLevel = computed(() => {
-  const gain = status.value?.sessionExpGained || 0
-  const uptime = status.value?.uptime || 0
-  const current = status.value?.levelProgress?.current || 0
-  const needed = status.value?.levelProgress?.needed || 0
-
-  if (!needed || !uptime || gain <= 0)
-    return ''
-
-  const ratePerHour = gain / (uptime / 3600)
-  if (ratePerHour <= 0)
-    return ''
-
-  const expNeeded = Math.max(0, needed - current)
-  const minsToLevel = expNeeded / (ratePerHour / 60)
-
-  if (minsToLevel < 60)
-    return `约 ${Math.ceil(minsToLevel)} 分钟后升级`
-  return `约 ${(minsToLevel / 60).toFixed(1)} 小时后升级`
 })
 
 const fertilizerNormal = computed(() => dashboardItems.value.find((item: any) => Number(item.id) === 1011))
@@ -685,41 +667,31 @@ useIntervalFn(updateCountdowns, 1000)
       <!-- 用户信息 + 资源 / 化肥 / 图鉴（合并为同一个毛玻璃面板；卡片一行 4 个，共 2 行） -->
       <div class="glass-panel home-panel">
         <div class="user-info-row">
-          <div class="user-details">
-            <div class="user-name-row">
-              <span class="user-avatar-sm">
-                <img
-                  v-if="avatarSrc && !avatarFailed"
-                  class="user-avatar-img"
-                  :src="avatarSrc"
-                  :alt="displayName"
-                  @error="avatarFailed = true"
-                >
-                <span v-else class="user-avatar-initial">{{ (displayName || '?').charAt(0) }}</span>
-              </span>
-              <span class="user-name">{{ displayName }}</span>
-              <span
-                v-if="platform"
-                class="user-platform"
-                :class="getPlatformClass(currentAccount?.platform)"
-              >{{ platform }}</span>
-              <span class="user-level">Lv.{{ status?.status?.level || 0 }}</span>
-            </div>
-            <div class="exp-bar-row">
-              <div class="exp-progress-bar">
-                <div class="exp-progress-fill" :style="{ width: `${getExpPercent(status?.levelProgress)}%` }" />
+          <!-- 左：头像占两行高度；名字 + 等级 在上，平台 + 到期时间 在下 -->
+          <div class="user-identity">
+            <span class="user-avatar">
+              <img
+                v-if="avatarSrc && !avatarFailed"
+                class="user-avatar-img"
+                :src="avatarSrc"
+                :alt="displayName"
+                @error="avatarFailed = true"
+              >
+              <span v-else class="user-avatar-initial">{{ (displayName || '?').charAt(0) }}</span>
+            </span>
+            <div class="user-identity-text">
+              <div class="user-line">
+                <span class="user-name">{{ displayName }}</span>
+                <span class="user-level">Lv.{{ status?.status?.level || 0 }}</span>
               </div>
-              <span class="exp-total">{{ status?.levelProgress?.current || 0 }} / {{ status?.levelProgress?.needed || 0 }}</span>
-            </div>
-            <div class="exp-meta">
-              <span class="exp-rate">
-                <span class="exp-bolt i-fas-bolt" />
-                EXP 效率：{{ expRate }}
-              </span>
-              <span v-if="timeToLevel" class="level-up-time">
-                <span class="i-carbon-arrow-up" />
-                {{ timeToLevel }}
-              </span>
+              <div class="user-line">
+                <span
+                  v-if="platform"
+                  class="user-platform"
+                  :class="getPlatformClass(currentAccount?.platform)"
+                >{{ platform }}</span>
+                <span class="user-expire">到期：{{ expireTimeText }}</span>
+              </div>
             </div>
           </div>
 
@@ -733,6 +705,21 @@ useIntervalFn(updateCountdowns, 1000)
               <span class="i-carbon-time" />
               <span>已运行 {{ formatDuration(localUptime) }}</span>
             </div>
+          </div>
+        </div>
+
+        <!-- EXP 效率 与 当前/所需经验 一行；下面经验条比面板略窄 -->
+        <div class="exp-meta">
+          <span class="exp-rate">
+            <span class="exp-bolt i-fas-bolt" />
+            EXP 效率：{{ expRate }}
+          </span>
+          <span class="exp-total">{{ status?.levelProgress?.current || 0 }} / {{ status?.levelProgress?.needed || 0 }}</span>
+        </div>
+
+        <div class="exp-bar-row">
+          <div class="exp-progress-bar">
+            <div class="exp-progress-fill" :style="{ width: `${getExpPercent(status?.levelProgress)}%` }" />
           </div>
         </div>
 
@@ -1005,7 +992,7 @@ useIntervalFn(updateCountdowns, 1000)
 /* 原「在线」卡片已并入面板右上角（单行：状态灯 + 在线 · 已运行时长） */
 .home-status {
   margin-left: auto;
-  align-self: flex-start;
+  align-self: center;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1053,18 +1040,28 @@ useIntervalFn(updateCountdowns, 1000)
   flex-shrink: 0;
 }
 
-.user-details {
+/* 头像占两行高度；右侧两行文字：上行 名字 + 等级，下行 平台 + 到期时间 */
+.user-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
   flex: 1;
+}
+
+.user-identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   min-width: 0;
 }
 
-.user-name-row {
+.user-line {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
   flex-wrap: nowrap;
-  margin-bottom: 10px;
 }
 
 .user-name {
@@ -1072,6 +1069,15 @@ useIntervalFn(updateCountdowns, 1000)
   font-size: 15px;
   font-weight: 700;
   color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-expire {
+  min-width: 0;
+  font-size: 11px;
+  color: #6b7280;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1087,18 +1093,18 @@ useIntervalFn(updateCountdowns, 1000)
   flex-shrink: 0;
 }
 
-/* 原顶栏账号菜单的头像 / 昵称 / 平台标签，已下沉到面板内、等级徽章左侧 */
-.user-avatar-sm {
+/* 面板内头像：占两行高度，圆角方形 */
+.user-avatar {
   display: flex;
-  height: 30px;
-  width: 30px;
+  height: 44px;
+  width: 44px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 1px 4px rgba(31, 38, 80, 0.16);
+  box-shadow: 0 2px 6px rgba(31, 38, 80, 0.18);
 }
 
 .user-avatar-img {
@@ -1126,6 +1132,8 @@ useIntervalFn(updateCountdowns, 1000)
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 92%;
+  margin: 6px auto 0;
 }
 
 .exp-progress-bar {
@@ -1404,9 +1412,9 @@ useIntervalFn(updateCountdowns, 1000)
     font-size: 13px;
   }
 
-  .user-avatar-sm {
-    height: 26px;
-    width: 26px;
+  .user-avatar {
+    height: 38px;
+    width: 38px;
   }
 }
 
