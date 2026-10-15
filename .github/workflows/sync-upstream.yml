@@ -68,23 +68,23 @@ jobs:
             --title "上游同步冲突，需要手动处理" \
             --body "## 上游同步冲突
 
-自动合并上游 https://github.com/xxxscarlxrd404/qq-farm-bot 的 main 时发生冲突，已中止本次同步（未推送任何内容）。
+          自动合并上游 https://github.com/xxxscarlxrd404/qq-farm-bot 的 main 时发生冲突，已中止本次同步（未推送任何内容）。
 
-### 冲突文件
-\`\`\`
-${CONFLICTS}
-\`\`\`
+          ### 冲突文件
+          \`\`\`
+          ${CONFLICTS}
+          \`\`\`
 
-### 解决方法
-在本地克隆中执行：
+          ### 解决方法
+          在本地克隆中执行：
 
-\`\`\`bash
-git fetch upstream
-git merge upstream/main
-# 逐个解决冲突文件后
-git add <冲突文件>
-git commit
-git push origin main
-\`\`\`
+          \`\`\`bash
+          git fetch upstream
+          git merge upstream/main
+          # 逐个解决冲突文件后
+          git add <冲突文件>
+          git commit
+          git push origin main
+          \`\`\`
 
-冲突通常来自上游改动了本仓库自定义的登录/卡密/后台管理相关文件。"
+          冲突通常来自上游改动了本仓库自定义的登录/卡密/后台管理相关文件。"
