@@ -1,4 +1,4 @@
-import { defineConfig, presetAttributify, presetIcons, presetUno, presetWebFonts } from 'unocss'
+import { defineConfig, presetAttributify, presetIcons, presetUno } from 'unocss'
 
 export default defineConfig({
   content: {
@@ -22,6 +22,14 @@ export default defineConfig({
     'i-carbon-circle-dash-string': 'i-carbon-circle-dash',
     'i-carbon-circle-dash-return': 'i-carbon-circle-dash',
   },
+  // 字体已本地化（web/public/fonts + style.css 的 @font-face），
+  // 不再使用 presetWebFonts 在构建期访问 Google Fonts。
+  theme: {
+    fontFamily: {
+      sans: "'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+      mono: "'DM Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    },
+  },
   presets: [
     presetUno(),
     presetAttributify(),
@@ -44,13 +52,6 @@ export default defineConfig({
         'fa-solid': () => import('@iconify-json/fa-solid/icons.json').then(i => i.default),
         fab: () => import('@iconify-json/fa-brands/icons.json').then(i => i.default),
         'svg-spinners': () => import('@iconify-json/svg-spinners/icons.json').then(i => i.default),
-      },
-    }),
-    presetWebFonts({
-      fonts: {
-        sans: 'DM Sans',
-        serif: 'DM Serif Display',
-        mono: 'DM Mono',
       },
     }),
   ],

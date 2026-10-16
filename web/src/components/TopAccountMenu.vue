@@ -137,6 +137,22 @@ function avatarInitial(acc?: Account | null) {
   return accountDisplayName(acc).replace(/[()（）\s]/g, '').slice(0, 1) || '账'
 }
 
+/**
+ * 账号在线状态：
+ * - 非当前账号只能拿到后端 worker 运行标记 running
+ * - 当前账号在实时状态就绪时，若游戏内名称为「未登录」（掉线/登录失败）视为离线
+ */
+function isAccountOnline(acc?: Account | null) {
+  if (!acc || !acc.running)
+    return false
+  if (currentAccount.value?.id === acc.id && currentStatusReady.value) {
+    const liveName = cleanText(status.value?.status?.name)
+    if (liveName === '未登录')
+      return false
+  }
+  return true
+}
+
 async function loadCareer() {
   const accountId = cleanText(currentAccount.value?.id)
   if (!accountId)
@@ -317,17 +333,22 @@ async function handleLogout() {
               :style="{ backgroundColor: currentAccount?.id === acc.id ? 'color-mix(in srgb, var(--theme-primary) 10%, transparent)' : undefined }"
             >
               <button type="button" class="min-w-0 flex flex-1 items-center gap-3 text-left" :aria-label="`选择账号 ${accountDisplayName(acc)}`" :aria-pressed="currentAccount?.id === acc.id" @click="selectAccount(acc)">
-                <div class="h-7 w-7 flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 dark:bg-gray-600">
+                <div class="relative h-7 w-7 flex shrink-0 items-center justify-center overflow-visible rounded-full bg-gray-200 dark:bg-gray-600">
                   <img
                     v-if="shouldShowAvatar(acc)"
                     :src="avatarSource(acc)"
                     :alt="accountDisplayName(acc)"
-                    class="h-full w-full object-cover"
+                    class="h-full w-full rounded-full object-cover"
                     @error="markAvatarFailed(acc)"
                   >
                   <span v-else class="text-xs text-gray-500 font-semibold dark:text-gray-300">
                     {{ avatarInitial(acc) }}
                   </span>
+                  <span
+                    class="absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full ring-2 ring-white dark:ring-gray-900"
+                    :class="isAccountOnline(acc) ? 'bg-green-500' : 'bg-red-500'"
+                    :title="isAccountOnline(acc) ? '在线' : '离线'"
+                  />
                 </div>
                 <div class="min-w-0 flex flex-1 flex-col items-start">
                   <span class="w-full truncate text-left text-sm font-medium">

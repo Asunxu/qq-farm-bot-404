@@ -205,11 +205,11 @@ async function handleLogout() {
     <!-- Brand -->
     <div class="relative h-16 flex flex-none items-center justify-between px-2">
       <div class="min-w-0 flex items-center gap-3">
-        <div class="h-11 w-11 flex flex-none items-center justify-center overflow-hidden rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
+        <div class="h-11 w-11 flex flex-none items-center justify-center overflow-hidden rounded-full bg-white shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-700">
           <img
-            src="/icon.png"
+            src="/icon.svg"
             :alt="`${loginPageConfig.title || 'QQ农场智能助手'}图标`"
-            class="h-full w-full scale-150 object-cover"
+            class="h-7 w-7 object-contain"
           >
         </div>
         <div class="min-w-0">
