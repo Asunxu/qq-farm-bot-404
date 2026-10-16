@@ -1,8 +1,11 @@
 name: Sync Upstream
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'
+  # 上游 xxxscarlxrd404/qq-farm-bot 已转为私有仓库（2026-10-16 起），定时同步暂停。
+  # 恢复方法：上游重新公开后，在 GitHub Actions 页面重新启用本工作流，
+  # 恢复下面的 schedule，删除 "Sync paused" 守卫步骤及其 if 条件即可。
+  # schedule:
+  #   - cron: '*/30 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -13,21 +16,32 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Sync paused (upstream private)
+        id: paused
+        run: |
+          echo "上游仓库 xxxscarlxrd404/qq-farm-bot 当前为私有（自 2026-10-16 起），同步已暂停。"
+          echo "上游恢复公开后：恢复 on.schedule、重新启用工作流并删除本守卫步骤。"
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
+        if: steps.paused.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Add upstream remote
+        if: steps.paused.outputs.skip != 'true'
         run: |
           git remote remove upstream 2>/dev/null || true
           git remote add upstream https://github.com/xxxscarlxrd404/qq-farm-bot.git
 
       - name: Fetch upstream
+        if: steps.paused.outputs.skip != 'true'
         run: git fetch upstream --prune
 
       - name: Check if already in sync
         id: check
+        if: steps.paused.outputs.skip != 'true'
         run: |
           if git merge-base --is-ancestor upstream/main HEAD; then
             echo "in_sync=true" >> "$GITHUB_OUTPUT"
@@ -36,10 +50,11 @@ jobs:
           fi
 
       - name: Already up to date
-        if: steps.check.outputs.in_sync == 'true'
+        if: steps.paused.outputs.skip != 'true' && steps.check.outputs.in_sync == 'true'
         run: echo "HEAD already contains upstream/main, nothing to do."
 
       - name: Configure custom merge driver
+        if: steps.paused.outputs.skip != 'true'
         # 让 .gitattributes 中标记 merge=ours 的自定义前端 UI 路径在合并时保留本仓库版本
         run: git config merge.ours.driver true
 
