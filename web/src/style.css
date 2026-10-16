@@ -213,6 +213,28 @@ body {
 }
 
 /*
+ * 全站卡片统一为概览页同款：磨砂玻璃 + 大圆角 + 白色半透明描边。
+ * 命中带阴影（含 hover 阴影）的实底卡片与 ui-card 容器；
+ * 输入框、开关、rounded-full 小圆片、表格吸附列等组件不受影响。
+ */
+.bg-white:is(.shadow, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl):not(.rounded-full):not(.sticky),
+.bg-white.hover\:shadow-md:not(.rounded-full),
+.ui-card,
+.ui-card-elevated {
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 10px 30px rgba(31, 38, 80, 0.1) !important;
+}
+
+.dark .bg-white:is(.shadow, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl):not(.rounded-full):not(.sticky),
+.dark .bg-white.hover\:shadow-md:not(.rounded-full),
+.dark .ui-card,
+.dark .ui-card-elevated {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+}
+
+/*
  * 弹窗专用毛玻璃：透明度比普通卡片高，保证弹窗内容在
  * 主题背景为 transparent 时（如田园绿主题）也清晰可读。
  */

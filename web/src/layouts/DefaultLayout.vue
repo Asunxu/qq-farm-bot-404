@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIntervalFn } from '@vueuse/core'
 import api from '@/api'
 import AnnouncementPopup from '@/components/AnnouncementPopup.vue'
 import NavMenuButton from '@/components/game/NavMenuButton.vue'
 import MysteryMerchantBanner from '@/components/shop/MysteryMerchantBanner.vue'
+import Sidebar from '@/components/Sidebar.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import TopAccountMenu from '@/components/TopAccountMenu.vue'
-import { menuRoutes } from '@/router/menu'
 import { useAccountStore } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
 import { useStatusStore } from '@/stores/status'
@@ -23,9 +23,6 @@ const statusStore = useStatusStore()
 const userStore = useUserStore()
 const { currentAccount } = storeToRefs(accountStore)
 const { status, realtimeConnected } = storeToRefs(statusStore)
-
-const searchKeyword = ref('')
-const searchFocused = ref(false)
 
 // 原侧边栏的系统保活逻辑：ping、账号轮询、实时状态连接
 const wsErrorNotifiedAt = ref<Record<string, number>>({})
@@ -83,36 +80,10 @@ watch(() => status.value?.wsError, (wsError: any) => {
   const lastNotified = wsErrorNotifiedAt.value[accId] || 0
   if (errAt <= lastNotified)
     return
+
   wsErrorNotifiedAt.value[accId] = errAt
   router.push('/settings')
 }, { deep: true })
-
-const searchResults = computed(() => {
-  const keyword = searchKeyword.value.trim().toLowerCase()
-  if (!keyword)
-    return []
-  return menuRoutes
-    .filter(item => !item.adminOnly || userStore.isAdmin)
-    .filter(item => item.label.toLowerCase().includes(keyword) || item.name.toLowerCase().includes(keyword))
-    .map(item => ({
-      path: item.path ? `/${item.path}` : '/',
-      label: item.label,
-      icon: item.icon,
-    }))
-})
-
-function goTo(item: { path: string }) {
-  searchKeyword.value = ''
-  searchFocused.value = false
-  router.push(item.path)
-}
-
-function onSearchBlur() {
-  // 延迟关闭，保证点击结果先触发跳转
-  window.setTimeout(() => {
-    searchFocused.value = false
-  }, 150)
-}
 </script>
 
 <template>
@@ -120,47 +91,16 @@ function onSearchBlur() {
     <!-- Dashboard Background Image（PC / 移动端分别在 style.css 内切换） -->
     <div class="dashboard-bg" />
 
+    <!-- PC 端常驻侧边栏（移动端默认隐藏，不影响左上角按钮） -->
+    <Sidebar />
+
     <main class="relative h-full min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden">
-      <!-- 顶栏：左侧导航菜单按钮，右侧搜索 / 主题 / 通知 / 账号 -->
+      <!-- 顶栏：左侧导航菜单按钮（仅移动端），右侧主题 / 账号 -->
       <header class="relative z-30 flex shrink-0 items-center justify-between gap-4 px-4 pt-4 sm:px-6 lg:px-8 lg:pt-5">
-        <NavMenuButton />
+        <NavMenuButton class="lg:hidden" />
 
-        <div class="flex items-center gap-4">
-          <div class="search-box relative hidden lg:flex">
-            <div class="search-icon i-carbon-search" />
-            <input
-              v-model="searchKeyword"
-              type="text"
-              placeholder="搜索功能…"
-              @focus="searchFocused = true"
-              @blur="onSearchBlur"
-              @keydown.enter="searchResults[0] && goTo(searchResults[0])"
-            >
-            <div
-              v-if="searchFocused && searchKeyword && searchResults.length"
-              class="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden border border-white/60 rounded-2xl bg-white/95 p-1.5 shadow-xl backdrop-blur-md"
-            >
-              <button
-                v-for="item in searchResults"
-                :key="item.path"
-                class="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-gray-700 transition hover:bg-emerald-50 hover:text-emerald-600"
-                @mousedown.prevent="goTo(item)"
-              >
-                <div :class="[item.icon]" class="text-base" />
-                <span>{{ item.label }}</span>
-              </button>
-            </div>
-          </div>
-
+        <div class="ml-auto flex items-center gap-4">
           <ThemeToggle />
-
-          <button
-            class="icon-btn hidden items-center justify-center lg:flex"
-            title="活动"
-            @click="router.push('/activity')"
-          >
-            <div class="i-carbon-notification text-lg text-gray-500" />
-          </button>
 
           <TopAccountMenu />
         </div>
@@ -198,53 +138,6 @@ header :deep(.icon-btn) {
 
 header :deep(.icon-btn:hover) {
   background: rgba(255, 255, 255, 0.55);
-}
-
-/* PC 搜索框 */
-.search-box {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 300px;
-  border-radius: 999px;
-  padding: 9px 18px;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 4px 14px rgba(31, 38, 80, 0.12);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: all 0.2s ease;
-}
-
-.search-box:focus-within {
-  background: #fff;
-  box-shadow: 0 6px 18px rgba(31, 38, 80, 0.16);
-}
-
-.search-icon {
-  font-size: 16px;
-  color: rgba(0, 0, 0, 0.35);
-  flex-shrink: 0;
-}
-
-.search-box input {
-  width: 100%;
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 14px;
-  color: #333;
-}
-
-.search-box input::placeholder {
-  color: rgba(0, 0, 0, 0.32);
-}
-
-/* 移动端隐藏搜索框（PC 端专用） */
-@media (max-width: 1023px) {
-  .search-box {
-    display: none;
-  }
 }
 
 /* Slide Fade Transition */

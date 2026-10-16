@@ -741,6 +741,53 @@ useIntervalFn(updateCountdowns, 1000)
             </div>
           </div>
         </div>
+
+        <!-- 下次检查倒计时：与化肥等资源卡同面板，横线隔开，一行三个 -->
+        <div class="home-countdown-divider" />
+        <div class="home-countdowns">
+          <div class="min-w-0 flex flex-col items-center text-center">
+            <div
+              class="h-18 w-18 flex items-center justify-center rounded-full p-1"
+              :style="getCountdownRingStyle(localNextFarmRemainSec, farmCountdownTotal, '#22c55e')"
+            >
+              <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
+                <div class="i-carbon-sprout text-xl text-green-500" />
+                <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">农场</span>
+              </div>
+            </div>
+            <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextFarmCheck">
+              {{ nextFarmCheck }}
+            </div>
+          </div>
+          <div class="min-w-0 flex flex-col items-center text-center">
+            <div
+              class="h-18 w-18 flex items-center justify-center rounded-full p-1"
+              :style="getCountdownRingStyle(localNextHelpRemainSec, helpCountdownTotal, '#3b82f6')"
+            >
+              <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
+                <div class="i-carbon-user-multiple text-xl text-blue-500" />
+                <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">帮助</span>
+              </div>
+            </div>
+            <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextHelpCheck">
+              {{ nextHelpCheck }}
+            </div>
+          </div>
+          <div class="min-w-0 flex flex-col items-center text-center">
+            <div
+              class="h-18 w-18 flex items-center justify-center rounded-full p-1"
+              :style="getCountdownRingStyle(localNextStealRemainSec, stealCountdownTotal, '#f97316')"
+            >
+              <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
+                <div class="i-carbon-run text-xl text-orange-500" />
+                <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">偷菜</span>
+              </div>
+            </div>
+            <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextStealCheck">
+              {{ nextStealCheck }}
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -856,57 +903,6 @@ useIntervalFn(updateCountdowns, 1000)
       </div>
 
       <div class="flex flex-col gap-4 md:min-h-0 md:w-1/4 md:overflow-hidden">
-        <div class="glass-card-lg flex shrink-0 flex-col p-3.5">
-          <h3 class="mb-3 flex items-center gap-2 text-base font-medium 2xl:text-lg">
-            <div class="i-carbon-hourglass" />
-            <span>下次检查倒计时</span>
-          </h3>
-          <div class="grid grid-cols-3 gap-2">
-            <div class="min-w-0 flex flex-col items-center text-center">
-              <div
-                class="h-18 w-18 flex items-center justify-center rounded-full p-1"
-                :style="getCountdownRingStyle(localNextFarmRemainSec, farmCountdownTotal, '#22c55e')"
-              >
-                <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
-                  <div class="i-carbon-sprout text-xl text-green-500" />
-                  <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">农场</span>
-                </div>
-              </div>
-              <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextFarmCheck">
-                {{ nextFarmCheck }}
-              </div>
-            </div>
-            <div class="min-w-0 flex flex-col items-center text-center">
-              <div
-                class="h-18 w-18 flex items-center justify-center rounded-full p-1"
-                :style="getCountdownRingStyle(localNextHelpRemainSec, helpCountdownTotal, '#3b82f6')"
-              >
-                <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
-                  <div class="i-carbon-user-multiple text-xl text-blue-500" />
-                  <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">帮助</span>
-                </div>
-              </div>
-              <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextHelpCheck">
-                {{ nextHelpCheck }}
-              </div>
-            </div>
-            <div class="min-w-0 flex flex-col items-center text-center">
-              <div
-                class="h-18 w-18 flex items-center justify-center rounded-full p-1"
-                :style="getCountdownRingStyle(localNextStealRemainSec, stealCountdownTotal, '#f97316')"
-              >
-                <div class="h-full w-full flex flex-col items-center justify-center rounded-full bg-white dark:bg-gray-800">
-                  <div class="i-carbon-run text-xl text-orange-500" />
-                  <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">偷菜</span>
-                </div>
-              </div>
-              <div class="mt-1.5 w-full truncate text-sm font-bold font-mono 2xl:text-base" :title="nextStealCheck">
-                {{ nextStealCheck }}
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div class="glass-card-lg min-h-0 flex flex-1 flex-col overflow-hidden p-4">
           <h3 class="mb-3 flex items-center gap-2 text-base font-medium 2xl:text-lg">
             <div class="i-carbon-chart-column" />
@@ -1337,6 +1333,25 @@ useIntervalFn(updateCountdowns, 1000)
   font-size: 14px;
   color: rgba(55, 65, 81, 0.35);
   flex-shrink: 0;
+}
+
+/* 资源卡与倒计时之间的分隔线 */
+.home-countdown-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(31, 38, 80, 0.14) 15%, rgba(31, 38, 80, 0.14) 85%, transparent);
+}
+
+/* 倒计时一行三个 */
+.home-countdowns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 767px) {
+  .home-countdowns {
+    gap: 8px;
+  }
 }
 
 /* 农场状态卡片 */
