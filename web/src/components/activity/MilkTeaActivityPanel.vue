@@ -3,12 +3,14 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/api'
 import { isWithinActivityWindowMs, MILK_TEA_ACTIVITY_WINDOW } from '@/constants/activity-windows'
 import { useAccountStore } from '@/stores/account'
+import { formatWanAmount } from '@/utils/number-format'
 import MilkTeaCraftDialog from './MilkTeaCraftDialog.vue'
 import MilkTeaShopDialogs from './MilkTeaShopDialogs.vue'
 
 const emit = defineEmits<{ back: [] }>()
 const accounts = useAccountStore()
 const host = ref<HTMLElement | null>(null)
+const gameWidth = ref('100%')
 let sizeObserver: ResizeObserver | undefined
 let fitFrame: number | undefined
 function scheduleFitGame() {
@@ -22,27 +24,20 @@ function scheduleFitGame() {
 function fitGame() {
   if (!host.value)
     return
-  // 手机端 .milk-host 自身就是固定定位的滚动容器（整屏面板），需把它也纳入可滚动祖先的查找
-  let viewport: HTMLElement | null = host.value
+  let viewport = host.value.parentElement
   while (viewport && !/auto|scroll/.test(getComputedStyle(viewport).overflowY))
     viewport = viewport.parentElement
   if (!viewport)
     return
-  // 手机端面板固定定位在顶栏下方，需实测顶部导航栏底边（顶栏不随滚动移动，fixed 定位下可直接用），
-  // 交由媒体查询里的 --milk-top 使用，保证顶栏高度保留、面板从导航栏下方开始
-  const layoutHeader = viewport.closest('main')?.querySelector<HTMLElement>(':scope > header')
-  const headerBottom = layoutHeader ? Math.round(Math.max(0, layoutHeader.getBoundingClientRect().bottom)) : 0
-  if (host.value.style.getPropertyValue('--milk-top') !== `${headerBottom}px`)
-    host.value.style.setProperty('--milk-top', `${headerBottom}px`)
   const bounds = viewport.getBoundingClientRect()
   const padding = Number.parseFloat(getComputedStyle(viewport).paddingBottom) || 0
   const top = host.value.getBoundingClientRect().top + viewport.scrollTop
   const notices = Array.from(host.value.querySelectorAll<HTMLElement>('.milk-message, .milk-error'))
     .reduce((height, notice) => height + notice.getBoundingClientRect().height, 0)
   const height = Math.max(0, bounds.top + viewport.clientHeight - padding - top - notices)
-  const unit = `${(Math.floor(Math.min(620, host.value.clientWidth, height * 900 / 1600)) / 100).toFixed(3)}px`
-  if (host.value.style.getPropertyValue('--milk-u') !== unit)
-    host.value.style.setProperty('--milk-u', unit)
+  const width = `${Math.floor(Math.min(620, host.value.clientWidth, height * 900 / 1600))}px`
+  if (gameWidth.value !== width)
+    gameWidth.value = width
 }
 
 const state = ref<any>(null)
@@ -76,7 +71,9 @@ let timer: ReturnType<typeof setInterval>
 let generation = 0
 const img = (name: string) => `/activity/milk-tea/${name}.png`
 const currencyIcon = (item: any) => ({ 1001: '/game-config/resource-icons/gold.png', 1004: '/game-config/resource-icons/diamond.png', 1041: img('icon_s4_ticket') } as Record<string, string>)[String(item.id ?? item.itemId)] || item.image || ''
-const money = (id: string) => state.value?.balances?.find((x: any) => String(x.itemId ?? x.id) === id)?.count || '0'
+// 大额数字统一带万/亿单位（不足 1 万时显示原始数字），避免数字过长溢出胶囊框
+const fmt = (v: any) => formatWanAmount(v ?? 0)
+const money = (id: string) => fmt(state.value?.balances?.find((x: any) => String(x.itemId ?? x.id) === id)?.count || '0')
 const goods = computed(() => (state.value?.goods || []).filter((g: any) => filter.value === '全部' || (filter.value === '种子' ? g.category_tag === 'seed' : g.category_tag !== 'seed')))
 const recipes = computed(() => (state.value?.recipes || []).filter((x: any) => x.unlocked).sort((a: any, b: any) => Number(a.recipe_id) - Number(b.recipe_id)))
 const shelfRecipes = computed(() => [...recipes.value].sort((a: any, b: any) => Number(b.stock_cups === '-1') - Number(a.stock_cups === '-1') || Number(b.recipe_id) - Number(a.recipe_id)))
@@ -211,7 +208,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="host" class="milk-host">
+  <div ref="host" class="milk-host" :style="{ '--game-width': gameWidth }">
     <p v-if="!accounts.currentAccountId" class="milk-message">
       请先选择账号
     </p>
@@ -237,20 +234,20 @@ onUnmounted(() => {
         </div>
         <div class="balances">
           <div v-if="tab === 'exchange'">
-            <img :src="currencyIcon({ id: '1001' })" alt="金币">{{ money('1001') }}
-          </div><div><img :src="img('img_s4TeaUI_rewardpng')" alt="奶茶券">{{ money('1041') }}</div><div v-if="tab === 'exchange'">
-            <img :src="currencyIcon({ id: '1004' })" alt="钻石">{{ money('1004') }}
+            <img :src="currencyIcon({ id: '1001' })" alt="金币"><span>{{ money('1001') }}</span>
+          </div><div><img :src="img('img_s4TeaUI_rewardpng')" alt="奶茶券"><span>{{ money('1041') }}</span></div><div v-if="tab === 'exchange'">
+            <img :src="currencyIcon({ id: '1004' })" alt="钻石"><span>{{ money('1004') }}</span>
           </div>
         </div>
       </header>
       <main v-if="tab === 'shop' && state.shop" class="shop-scene">
-        <div class="shop-sign">
+        <div class="shop-sign" :style="{ backgroundImage: `url(${img('img_s4TeaUI_titleBg')})` }">
           <div class="shop-level">
             <b>{{ state.shop.level }}</b><span>店铺等级</span>
           </div><div>
             <strong>{{ state.summary.shop_name || '奶茶小铺' }}</strong><button class="edit image-button" @click="open('rename')">
               <img :src="img('img_s4TeaUI_editBtn')" alt="修改店名">
-            </button><p>营业额： <img class="revenue-ticket" :src="img('img_s4TeaUI_rewardpng')" alt="奶茶券"> {{ state.shop.total_revenue }}</p>
+            </button><p>营业额： <img class="revenue-ticket" :src="img('img_s4TeaUI_rewardpng')" alt="奶茶券"> {{ fmt(state.shop.total_revenue) }}</p>
           </div><button class="upgrade image-button" @click="open('upgrade')">
             <img :src="img('img_s4TeaUI_myShop')" alt="店铺升级"><span>店铺升级</span>
           </button>
@@ -267,7 +264,7 @@ onUnmounted(() => {
         </div>
         <button class="cashier image-button" :disabled="busy || !state.shop.pending_rewards.some((x: any) => Number(x.count) > 0)" @click="act('cashier')">
           <div class="cashier-orb">
-            <img :src="img('img_s4TeaUI_rewardpng')" alt="奶茶券"><b>{{ state.shop.pending_rewards.find((x: any) => String(x.id) === '1041')?.count || '0' }}</b>
+            <img :src="img('img_s4TeaUI_rewardpng')" alt="奶茶券"><b>{{ fmt(state.shop.pending_rewards.find((x: any) => String(x.id) === '1041')?.count || '0') }}</b>
           </div><span>领取收益</span>
         </button>
         <div class="employees">
@@ -310,7 +307,7 @@ onUnmounted(() => {
         </div>
         <div class="goods-grid">
           <button v-for="g in goods" :key="g.id" class="goods" :class="{ unavailable: !g.unlocked || !g.remaining }" :style="{ backgroundImage: `url(${img(Number(g.background_type) >= 2 ? 'img_s4Shop_itemBg3' : 'img_s4Shop_itemBg1')})` }" @click="open(`goods:${g.id}`)">
-            <strong>{{ g.name }}</strong><img :src="g.items[0]?.image || g.items[0]?.imageUrl || img('img_exchange_item1')" :alt="g.name"><span v-if="!g.unlocked" class="goods-lock">🔒<br>店铺{{ g.cond_hints.find((x: any) => !x.satisfied)?.target }}级解锁</span><small>{{ ({ 1: '每日', 2: '每周', 4: '永久' } as any)[g.restriction_type] || '' }}限购{{ g.remaining }}/{{ g.purchase_limit }}</small><b v-if="!g.remaining">已售罄</b><b v-else class="goods-costs"><span v-for="cost in g.costs" :key="cost.id"><img v-if="currencyIcon(cost)" :src="currencyIcon(cost)" :alt="cost.name"><span v-else>{{ cost.name }}</span>{{ cost.count }}</span></b>
+            <strong>{{ g.name }}</strong><img :src="g.items[0]?.image || g.items[0]?.imageUrl || img('img_exchange_item1')" :alt="g.name"><span v-if="!g.unlocked" class="goods-lock">🔒<br>店铺{{ g.cond_hints.find((x: any) => !x.satisfied)?.target }}级解锁</span><small>{{ ({ 1: '每日', 2: '每周', 4: '永久' } as any)[g.restriction_type] || '' }}限购{{ g.remaining }}/{{ g.purchase_limit }}</small><b v-if="!g.remaining">已售罄</b><b v-else class="goods-costs"><span v-for="cost in g.costs" :key="cost.id"><img v-if="currencyIcon(cost)" :src="currencyIcon(cost)" :alt="cost.name"><span v-else>{{ cost.name }}</span>{{ fmt(cost.count) }}</span></b>
           </button>
         </div>
       </main>
@@ -414,27 +411,6 @@ onUnmounted(() => {
 .milk-host {
   max-width: 620px;
   margin: auto;
-  /* 画布内尺寸统一以 --milk-u（画布宽度的 1/100）为基准，不依赖容器查询单位，兼容不支持 cqw 的旧版 iOS Safari */
-  --milk-u: calc(min(620px, 100vw) / 100);
-}
-/* 手机端：奶茶面板脱离页面内嵌布局，从顶部导航栏下沿开始铺满剩余视口，
-   既让游戏画布贴近顶部（官方游戏就是全屏），又完整保留 App 顶部导航栏；
-   顶栏高度由 fitGame 实测写入 --milk-top，避免硬编码在系统缩放/字号变化时错位。
-   桌面端保持原有的内嵌卡片布局不变 */
-@media (max-width: 768px) {
-  .milk-host {
-    position: fixed;
-    top: var(--milk-top, 0px);
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 60;
-    max-width: none;
-    margin: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    background: #eecf91;
-  }
 }
 .milk-message,
 .milk-error {
@@ -447,16 +423,14 @@ onUnmounted(() => {
 }
 .milk-game {
   position: relative;
-  width: calc(var(--milk-u) * 100);
-  height: calc(var(--milk-u) * 1600 / 9);
+  width: var(--game-width, 100%);
   margin-inline: auto;
+  aspect-ratio: 900/1600;
   background-size: 100% 100%;
   overflow: hidden;
   color: #835535;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  /* 关掉 iOS 文本自动放大，避免窄画布上文字被放大后互相重叠 */
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+  container-type: inline-size;
 }
 .milk-game.exchange,
 .milk-game.work {
@@ -470,6 +444,9 @@ onUnmounted(() => {
   color: inherit;
   border: 0;
   background-color: transparent;
+  /* 抵消全局触屏最小触控目标（style.css 的 pointer:coarse 规则）：本面板按 900×1600 画布等比缩放，44px 下限会把 cqw 小按钮撑大互相遮挡 */
+  min-width: 0;
+  min-height: 0;
 }
 .milk-game button:disabled {
   cursor: default;
@@ -486,45 +463,48 @@ onUnmounted(() => {
 .milk-header {
   position: absolute;
   inset: 0 0 auto;
+  /* 顶部组（返回/logo/倒计时/?/余额）整体上移画布高度的 7.3%：
+     最顶元素落在画布顶端下方一点点，组内相对位置不变（店招同步上移，见 .shop-sign） */
+  top: -7.3%;
   height: 20%;
   z-index: 2;
 }
 .back {
   position: absolute;
   left: 3%;
-  top: 2%;
+  top: 40%;
   width: 9%;
 }
 .logo {
   position: absolute;
-  top: 2%;
+  top: 40%;
   left: 14%;
   width: 34%;
 }
 .countdown {
   position: absolute;
-  top: 25%;
+  top: 68%;
   left: 11%;
   display: flex;
   align-items: center;
-  gap: calc(2 * var(--milk-u));
+  gap: 2cqw;
   color: #fff;
   font-weight: 800;
-  font-size: calc(3.2 * var(--milk-u));
+  font-size: 3.2cqw;
 }
 .countdown-time {
   display: flex;
   align-items: center;
-  gap: calc(0.7 * var(--milk-u));
-  padding: calc(0.55 * var(--milk-u)) calc(1.8 * var(--milk-u));
-  border-radius: calc(10 * var(--milk-u));
+  gap: 0.7cqw;
+  padding: 0.55cqw 1.8cqw;
+  border-radius: 10cqw;
   background: #62462ba6;
   line-height: 1.2;
   white-space: nowrap;
 }
 .countdown-time svg {
-  width: calc(3 * var(--milk-u));
-  height: calc(3.4 * var(--milk-u));
+  width: 3cqw;
+  height: 3.4cqw;
   flex-shrink: 0;
 }
 .countdown button {
@@ -534,32 +514,44 @@ onUnmounted(() => {
   background: #fff7dfed !important;
   border-radius: 50%;
   color: #99724e !important;
-  width: calc(2.9 * var(--milk-u));
-  height: calc(2.9 * var(--milk-u));
-  box-shadow: 0 0 0 calc(0.33 * var(--milk-u)) #fff7df55;
-  font-size: calc(2.5 * var(--milk-u));
+  width: 5.8cqw;
+  height: 5.8cqw;
+  box-shadow: 0 0 0 0.65cqw #fff7df55;
+  font-size: 5cqw;
   font-weight: 900;
   line-height: 1;
 }
 .balances {
   position: absolute;
   right: 4%;
-  top: 2%;
-  width: 20%;
-  font-size: calc(3.2 * var(--milk-u));
+  top: 40%;
+  width: 24%;
+  font-size: 3cqw;
   font-weight: 900;
 }
 .balances > div {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 4%;
   background: #fff9e8dd;
-  border-radius: calc(3.33 * var(--milk-u));
+  border-radius: 30px;
   margin-bottom: 8%;
-  padding: 0 5%;
+  padding: 0 4%;
+  overflow: hidden;
 }
 .balances img {
-  width: 34%;
+  width: auto;
+  height: 3.4cqw;
+  flex-shrink: 0;
+}
+.balances > div > span {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Positions use the full 900 × 1600 game canvas, matching the official portrait view. */
 .milk-game.shop {
@@ -573,53 +565,45 @@ onUnmounted(() => {
 }
 .shop-sign {
   position: absolute;
-  top: 8%;
+  /* 与 .milk-header 同步上移 7.3%（17.6% → 10.3%），保持顶部组整体相对位置不变 */
+  top: 10.3%;
   left: 5%;
   width: 90%;
   height: 8.2%;
   box-sizing: border-box;
-  padding: calc(1.4 * var(--milk-u)) calc(3 * var(--milk-u));
+  padding: 1.4cqw 3cqw;
+  /* The source includes hanging rods and transparent margins above the board. */
+  background-size: 100% 156%;
+  background-position: center 72%;
+  background-repeat: no-repeat;
   display: grid;
   grid-template-columns: 19% 60% 21%;
   align-items: center;
   color: #fff8de;
   text-align: center;
-  font-size: calc(2.8 * var(--milk-u));
+  font-size: 2.8cqw;
   line-height: 1.2;
   z-index: 3;
-}
-/* 木板背景由独立图层承载：只改这里的 top 即可单独下移木牌，文字与按钮位置不受影响。
-   图片源含吊杆与透明上边，按原来的 background-size/position 缩放后整体下移。 */
-.shop-sign::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 35%;
-  height: 100%;
-  background: url('/activity/milk-tea/img_s4TeaUI_titleBg.png') center 72% / 100% 156% no-repeat;
-  pointer-events: none;
-  z-index: -1;
 }
 .shop-sign > div,
 .shop-sign > button {
   min-width: 0;
 }
 .shop-sign strong {
-  font-size: calc(3.7 * var(--milk-u));
+  font-size: 3.7cqw;
   line-height: 1.3;
 }
 .shop-sign p {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(0.7 * var(--milk-u));
-  margin: calc(0.5 * var(--milk-u)) 0 0;
+  gap: 0.7cqw;
+  margin: 0.5cqw 0 0;
   font-weight: 800;
 }
 .revenue-ticket {
-  width: calc(4.5 * var(--milk-u));
-  height: calc(3.2 * var(--milk-u));
+  width: 4.5cqw;
+  height: 3.2cqw;
   object-fit: contain;
 }
 .shop-level {
@@ -631,17 +615,17 @@ onUnmounted(() => {
   line-height: 1.1;
 }
 .shop-level b {
-  width: calc(10 * var(--milk-u));
-  height: calc(6.5 * var(--milk-u));
-  line-height: calc(6.5 * var(--milk-u));
-  font-size: calc(4 * var(--milk-u));
+  width: 10cqw;
+  height: 6.5cqw;
+  line-height: 6.5cqw;
+  font-size: 4cqw;
   background: url('/activity/milk-tea/img_s4TeaUI_hotBg.png') center / contain no-repeat;
 }
 .edit {
-  width: calc(5 * var(--milk-u));
-  height: calc(5 * var(--milk-u));
+  width: 5cqw;
+  height: 5cqw;
   vertical-align: middle;
-  margin-left: calc(1 * var(--milk-u));
+  margin-left: 1cqw;
 }
 .upgrade {
   display: flex;
@@ -653,46 +637,57 @@ onUnmounted(() => {
   line-height: 1.1;
 }
 .upgrade img {
-  width: calc(7 * var(--milk-u));
-  height: calc(7 * var(--milk-u));
+  width: 7cqw;
+  height: 7cqw;
 }
 .drink-shelf {
   position: absolute;
   top: 24.5%;
   left: 9%;
-  right: 9%;
+  /* 右边界让开右侧按钮列（shop-actions 宽 15% + 右 1%），避免饮品格被按钮压住 */
+  right: 17%;
   height: 8.2%;
   display: flex;
-  gap: calc(0.8 * var(--milk-u));
-  overflow: hidden;
+  gap: 0.8cqw;
+  /* 饮品格以底部为基准向上加高 50%（见 .drink），不能裁掉超出货架顶部的部分 */
 }
 .drink {
   position: relative;
-  flex: 0 0 17.2%;
+  /* 6 格在收窄后的货架内恰好放下 */
+  flex: 0 0 15.8%;
+  /* 底图加高 50%：底边与货架底对齐不动，向上超出货架顶部（数量标签 span 绝对定位在 bottom:0 跟随底边） */
+  height: 150%;
+  align-self: flex-end;
   min-width: 0;
   box-sizing: border-box;
   background: linear-gradient(150deg, #fff0c9 75%, #ba9473 75%);
-  border: calc(0.45 * var(--milk-u)) solid #d2a157;
-  border-radius: 0 0 calc(1.5 * var(--milk-u)) calc(1.5 * var(--milk-u));
+  border: 0.45cqw solid #d2a157;
+  border-radius: 0 0 1.5cqw 1.5cqw;
 }
 .drink > img {
+  /* 杯子保持原尺寸（86% / 1.5 ≈ 57.3%），在加高后的底图内上下居中 */
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
   width: 100%;
-  height: 86%;
+  height: 57.3%;
   object-fit: contain;
 }
 .drink > span {
   position: absolute;
   bottom: 0;
   right: 5%;
-  font-size: calc(2.8 * var(--milk-u));
+  font-size: 2.8cqw;
   line-height: 1.1;
   color: #fff0d5;
   font-weight: 900;
-  text-shadow: calc(0.15 * var(--milk-u)) calc(0.15 * var(--milk-u)) #916d50;
+  text-shadow: 0.15cqw 0.15cqw #916d50;
 }
 .drink.locked {
   display: grid;
-  place-items: start center;
+  /* 杯槽在加高后的底图内上下居中 */
+  place-items: center;
   background: #fff0c9;
 }
 .drink .locked-cup {
@@ -700,7 +695,8 @@ onUnmounted(() => {
   right: auto;
   bottom: auto;
   width: 65%;
-  height: 70%;
+  /* 底图加高 50% 后杯槽保持原尺寸：70% / 1.5 ≈ 46.7% */
+  height: 46.7%;
   display: grid;
   place-items: center;
   background: #998261;
@@ -716,12 +712,12 @@ onUnmounted(() => {
   top: 33.2%;
   left: 20%;
   right: 20%;
-  font-size: calc(2.9 * var(--milk-u));
+  font-size: 2.9cqw;
   line-height: 1.3;
   text-align: center;
   font-weight: 900;
   color: #fff4d9;
-  text-shadow: calc(0.2 * var(--milk-u)) calc(0.2 * var(--milk-u)) #976744;
+  text-shadow: 0.2cqw 0.2cqw #976744;
 }
 .cashier {
   position: absolute;
@@ -731,7 +727,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: calc(3 * var(--milk-u));
+  font-size: 3cqw;
 }
 .cashier-orb {
   position: relative;
@@ -752,14 +748,14 @@ onUnmounted(() => {
   right: 15%;
   bottom: 12%;
   max-width: 80%;
-  font-size: calc(2.8 * var(--milk-u));
+  font-size: 2.8cqw;
   color: #fff4d9;
-  text-shadow: calc(0.2 * var(--milk-u)) calc(0.2 * var(--milk-u)) #915932;
+  text-shadow: 0.2cqw 0.2cqw #915932;
   line-height: 1;
 }
 .cashier > span {
   width: 100%;
-  margin-top: calc(-0.5 * var(--milk-u));
+  margin-top: -0.5cqw;
   text-align: center;
   white-space: nowrap;
   background: url('/activity/milk-tea/img_s4TeaUI_bubbleBg.png') center / 100% 100% no-repeat;
@@ -783,22 +779,22 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   flex-direction: column;
-  font-size: calc(3 * var(--milk-u));
+  font-size: 3cqw;
   color: #fff8e4;
-  text-shadow: calc(0.2 * var(--milk-u)) calc(0.2 * var(--milk-u)) calc(0.2 * var(--milk-u)) #694429;
+  text-shadow: 0.2cqw 0.2cqw 0.2cqw #694429;
 }
 .employee > strong {
   flex-shrink: 0;
-  font-size: calc(3.4 * var(--milk-u));
+  font-size: 3.4cqw;
   line-height: 1.4;
 }
 .employee > span {
   flex-shrink: 0;
   background: #a07853;
-  padding: 0 calc(1.2 * var(--milk-u));
-  border: calc(0.2 * var(--milk-u)) solid #d4b38f;
-  border-radius: calc(2 * var(--milk-u));
-  font-size: calc(2.5 * var(--milk-u));
+  padding: 0 1.2cqw;
+  border: 0.2cqw solid #d4b38f;
+  border-radius: 2cqw;
+  font-size: 2.5cqw;
   line-height: 1.4;
 }
 .employee > b {
@@ -807,9 +803,9 @@ onUnmounted(() => {
   left: 0;
   z-index: 1;
   background: #4b4741;
-  border: calc(0.7 * var(--milk-u)) solid #d6a264;
-  border-radius: calc(1.5 * var(--milk-u));
-  padding: calc(0.3 * var(--milk-u)) calc(1 * var(--milk-u));
+  border: 0.7cqw solid #d6a264;
+  border-radius: 1.5cqw;
+  padding: 0.3cqw 1cqw;
   white-space: nowrap;
   line-height: 1.3;
 }
@@ -817,7 +813,7 @@ onUnmounted(() => {
   width: 100%;
   min-height: 0;
   flex: 1;
-  margin-bottom: calc(4 * var(--milk-u));
+  margin-bottom: 4cqw;
   background-size: contain;
   background-position: center bottom;
   transform: scaleX(-1);
@@ -828,7 +824,7 @@ onUnmounted(() => {
 }
 .locked-worker > img {
   position: absolute;
-  bottom: calc(3 * var(--milk-u));
+  bottom: 3cqw;
   width: 100%;
   height: 76%;
   object-fit: contain;
@@ -844,14 +840,14 @@ onUnmounted(() => {
   border: 0;
   color: #f4ba6a;
   font-weight: 800;
-  font-size: calc(2.8 * var(--milk-u));
+  font-size: 2.8cqw;
   white-space: nowrap;
 }
 .locked-worker span img {
   display: inline-block;
-  width: calc(5.5 * var(--milk-u));
-  height: calc(7 * var(--milk-u));
-  margin-bottom: calc(2 * var(--milk-u));
+  width: 5.5cqw;
+  height: 7cqw;
+  margin-bottom: 2cqw;
 }
 .shop-actions {
   position: absolute;
@@ -860,30 +856,30 @@ onUnmounted(() => {
   width: 15%;
   display: flex;
   flex-direction: column;
-  gap: calc(2.2 * var(--milk-u));
+  gap: 2.2cqw;
   z-index: 4;
 }
 .shop-actions button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: calc(2.9 * var(--milk-u));
+  font-size: 2.9cqw;
   font-weight: 800;
   line-height: 1.1;
   color: #fff;
-  text-shadow: calc(0.2 * var(--milk-u)) calc(0.2 * var(--milk-u)) calc(0.2 * var(--milk-u)) #684833;
+  text-shadow: 0.2cqw 0.2cqw 0.2cqw #684833;
   white-space: nowrap;
 }
 .shop-actions img {
-  height: calc(11 * var(--milk-u));
+  height: 11cqw;
 }
 .gold-button {
   background: #ffd062 !important;
-  border: calc(0.44 * var(--milk-u)) solid #7b4b32 !important;
-  border-radius: calc(2.44 * var(--milk-u));
-  padding: calc(0.89 * var(--milk-u)) calc(2 * var(--milk-u)) !important;
+  border: 4px solid #7b4b32 !important;
+  border-radius: 22px;
+  padding: 8px 18px !important;
   font-weight: 900 !important;
-  box-shadow: inset 0 0 0 calc(0.33 * var(--milk-u)) #ffe5a0;
+  box-shadow: inset 0 0 0 3px #ffe5a0;
   color: #7a4b29 !important;
 }
 .make.gold-button {
@@ -895,25 +891,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(1 * var(--milk-u));
+  gap: 1cqw;
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0;
   box-shadow: none;
-  font-size: calc(5 * var(--milk-u)) !important;
+  font-size: 5cqw !important;
   background: url('/activity/milk-tea/img_s4_btn0.png') center / 100% 100% no-repeat !important;
 }
 .make-cup {
-  width: calc(5 * var(--milk-u));
-  height: calc(6 * var(--milk-u));
+  width: 5cqw;
+  height: 6cqw;
   background: #80502d;
   clip-path: polygon(10% 15%, 68% 15%, 85% 0, 95% 4%, 80% 22%, 90% 28%, 73% 100%, 25% 100%);
 }
 .employ {
   align-self: center;
   background: #ffdc84 !important;
-  border-radius: calc(1.5 * var(--milk-u));
-  padding: calc(1.5 * var(--milk-u)) !important;
+  border-radius: 1.5cqw;
+  padding: 1.5cqw !important;
 }
 .paper {
   position: absolute;
@@ -943,17 +939,17 @@ onUnmounted(() => {
 }
 .shop-filters {
   display: flex;
-  border: calc(0.33 * var(--milk-u)) solid #dca74b;
-  border-radius: calc(4.44 * var(--milk-u));
+  border: 3px solid #dca74b;
+  border-radius: 40px;
   background: #ffdc85;
   margin: 0 0 4%;
   padding: 1%;
 }
 .shop-filters button {
   flex: 1;
-  font-size: calc(3.5 * var(--milk-u));
+  font-size: 3.5cqw;
   font-weight: 900;
-  border-radius: calc(3.33 * var(--milk-u));
+  border-radius: 30px;
   padding: 2% 0;
 }
 .shop-filters .selected {
@@ -963,15 +959,11 @@ onUnmounted(() => {
 .goods-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: calc(3 * var(--milk-u)) calc(2 * var(--milk-u));
+  gap: 3cqw 2cqw;
 }
 .goods {
   position: relative;
   aspect-ratio: 240/320;
-  /* 旧版 iOS Safari 不会把 aspect-ratio 计入 grid 隐式行高，行高会塌缩成内容高度的一半，
-     导致第二行商品盖住第一行；这里补一个等价的 min-height 兜底：
-     卡宽 = (画布 80% - 2 个 2u 间距) / 3 = 228 设计px，高 = 228 × 320 / 240 = 304 设计px ≈ 33.8u */
-  min-height: calc(33.8 * var(--milk-u));
   background-size: 100% 100%;
   padding: 6% 5% 8% !important;
   display: flex;
@@ -980,8 +972,15 @@ onUnmounted(() => {
   justify-content: space-between;
   min-width: 0;
 }
+.milk-game .goods {
+  /* 旧版 iOS Safari 不会把 aspect-ratio 计入 grid 隐式行高，行高会塌缩成内容高度的一半，
+     导致第二行商品盖住第一行；这里补一个等价的 min-height 兜底：
+     卡宽 = (画布 80% - 2 个 2cqw 间距) / 3 = 228 设计px，高 = 228 × 320 / 240 = 304 设计px ≈ 33.8cqw。
+     用 .milk-game .goods 提高优先级，避免被上方触屏按钮触控目标重置（.milk-game button）覆盖 */
+  min-height: 33.8cqw;
+}
 .goods strong {
-  font-size: calc(2.8 * var(--milk-u));
+  font-size: 2.8cqw;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
@@ -991,11 +990,11 @@ onUnmounted(() => {
   object-fit: contain;
 }
 .goods small {
-  font-size: calc(2.3 * var(--milk-u));
+  font-size: 2.3cqw;
   font-weight: 700;
 }
 .goods > b {
-  font-size: calc(2.6 * var(--milk-u));
+  font-size: 2.6cqw;
   color: #f35e46;
   overflow-wrap: anywhere;
 }
@@ -1004,14 +1003,14 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(0.6 * var(--milk-u));
+  gap: 0.6cqw;
 }
 .goods-costs {
   flex-wrap: wrap;
 }
 .goods-costs img {
-  width: calc(4.5 * var(--milk-u));
-  height: calc(4.5 * var(--milk-u));
+  width: 4.5cqw;
+  height: 4.5cqw;
   object-fit: contain;
 }
 .goods.unavailable {
@@ -1022,7 +1021,7 @@ onUnmounted(() => {
   position: absolute;
   top: 35%;
   text-align: center;
-  font-size: calc(2.8 * var(--milk-u));
+  font-size: 2.8cqw;
   font-weight: 900;
 }
 .work-paper {
@@ -1046,29 +1045,29 @@ onUnmounted(() => {
   height: 23%;
   background-size: 100% 100%;
   font-weight: 900;
-  font-size: calc(3 * var(--milk-u));
+  font-size: 3cqw;
   padding-top: 5%;
   transform: rotate(10deg);
   color: #ead3a9;
 }
 .invite {
-  font-size: calc(3.5 * var(--milk-u)) !important;
+  font-size: 3.5cqw !important;
 }
 .record-title {
   display: flex;
   align-items: center;
-  gap: calc(1.33 * var(--milk-u));
-  font-size: calc(3.5 * var(--milk-u));
+  gap: 12px;
+  font-size: 3.5cqw;
 }
 .record-title:before,
 .record-title:after {
   content: '';
   flex: 1;
-  border-top: calc(0.33 * var(--milk-u)) dashed #936647;
+  border-top: 3px dashed #936647;
 }
 .empty-work {
   margin-top: 15%;
-  font-size: calc(3.3 * var(--milk-u));
+  font-size: 3.3cqw;
   font-weight: 900;
   color: #9b9170;
 }
@@ -1076,15 +1075,15 @@ onUnmounted(() => {
   width: 24%;
 }
 .work-record {
-  border-bottom: calc(0.11 * var(--milk-u)) dashed #a97d53;
-  font-size: calc(2.7 * var(--milk-u));
-  padding: calc(1.11 * var(--milk-u));
+  border-bottom: 1px dashed #a97d53;
+  font-size: 2.7cqw;
+  padding: 10px;
 }
 .interactions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: calc(0.89 * var(--milk-u));
+  gap: 8px;
 }
 .milk-tabs {
   position: absolute;
@@ -1131,38 +1130,38 @@ onUnmounted(() => {
   width: 100%;
   overflow: auto;
   background: #fff3d1;
-  border: calc(0.67 * var(--milk-u)) solid #a77446;
-  border-radius: calc(2.22 * var(--milk-u));
+  border: 6px solid #a77446;
+  border-radius: 20px;
   padding: 6%;
   text-align: center;
-  font-size: calc(3 * var(--milk-u));
+  font-size: 3cqw;
 }
 .milk-modal h2 {
-  font-size: calc(4 * var(--milk-u));
+  font-size: 4cqw;
 }
 .modal-close {
   position: absolute;
   right: 3%;
   top: 0;
-  font-size: calc(6 * var(--milk-u)) !important;
+  font-size: 6cqw !important;
 }
 .milk-modal input {
   width: 100%;
-  padding: calc(1.33 * var(--milk-u));
-  margin-bottom: calc(2.22 * var(--milk-u));
+  padding: 12px;
+  margin-bottom: 20px;
   background: #fff9e8;
-  border: calc(0.22 * var(--milk-u)) solid #c6a06b;
-  border-radius: calc(1.11 * var(--milk-u));
+  border: 2px solid #c6a06b;
+  border-radius: 10px;
 }
 .purchase-product {
   display: flex;
   align-items: center;
-  gap: calc(3 * var(--milk-u));
+  gap: 3cqw;
   text-align: left;
 }
 .purchase-product > img {
-  width: calc(16 * var(--milk-u));
-  height: calc(16 * var(--milk-u));
+  width: 16cqw;
+  height: 16cqw;
   object-fit: contain;
 }
 .purchase-product > div {
@@ -1170,22 +1169,22 @@ onUnmounted(() => {
   min-width: 0;
 }
 .purchase-product strong {
-  font-size: calc(4 * var(--milk-u));
+  font-size: 4cqw;
 }
 .purchase-product p {
-  font-size: calc(2.8 * var(--milk-u));
+  font-size: 2.8cqw;
   line-height: 1.5;
 }
 .purchase-controls {
   display: flex;
   align-items: center;
-  gap: calc(2 * var(--milk-u));
-  margin-top: calc(3 * var(--milk-u));
+  gap: 2cqw;
+  margin-top: 3cqw;
 }
 .purchase-controls button {
-  min-width: calc(8 * var(--milk-u));
-  min-height: calc(8 * var(--milk-u));
-  border-radius: calc(1 * var(--milk-u));
+  min-width: 8cqw;
+  min-height: 8cqw;
+  border-radius: 1cqw;
   background: #eac58b;
   font-weight: 800;
 }
@@ -1194,38 +1193,38 @@ onUnmounted(() => {
   flex: 1;
   width: 0;
   text-align: center;
-  font-size: calc(4 * var(--milk-u));
+  font-size: 4cqw;
   margin: 0;
-  padding: calc(1 * var(--milk-u));
+  padding: 1cqw;
 }
 .milk-modal .purchase-range {
   padding: 0;
   border: 0;
   width: 100%;
-  margin: calc(3 * var(--milk-u)) 0 0;
+  margin: 3cqw 0 0;
   accent-color: #9bc536;
 }
 .purchase-limit {
-  font-size: calc(2.6 * var(--milk-u));
+  font-size: 2.6cqw;
   line-height: 1.5;
 }
 .purchase-costs {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: calc(2 * var(--milk-u));
-  margin: calc(2 * var(--milk-u)) 0 calc(3 * var(--milk-u));
-  font-size: calc(3 * var(--milk-u));
+  gap: 2cqw;
+  margin: 2cqw 0 3cqw;
+  font-size: 3cqw;
   font-weight: 800;
 }
 .purchase-costs span {
   display: flex;
   align-items: center;
-  gap: calc(1 * var(--milk-u));
+  gap: 1cqw;
 }
 .purchase-costs img {
-  width: calc(4 * var(--milk-u));
-  height: calc(4 * var(--milk-u));
+  width: 4cqw;
+  height: 4cqw;
   object-fit: contain;
 }
 </style>

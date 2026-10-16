@@ -86,6 +86,11 @@ function unlockLevel(r: any) {
   background: #21180fc4;
   overflow: hidden;
 }
+.craft-shade button {
+  /* 抵消全局触屏最小触控目标：弹窗在按画布等比缩放的游戏容器内，44px 下限会把 cqw 小按钮撑大 */
+  min-width: 0;
+  min-height: 0;
+}
 .craft-book {
   /* Definite bounds keep the list from sizing the grid and pushing the footer off-screen. */
   position: absolute;
@@ -93,7 +98,7 @@ function unlockLevel(r: any) {
   min-height: 0;
   min-width: 0;
   box-sizing: border-box;
-  padding: calc(11 * var(--milk-u)) calc(5 * var(--milk-u)) calc(5 * var(--milk-u));
+  padding: 11cqw 5cqw 5cqw;
   background: url('/activity/milk-tea/img_s4_popBg1.png') center / 100% 100% no-repeat;
   color: #966747;
   font-weight: 800;
@@ -113,9 +118,9 @@ function unlockLevel(r: any) {
 }
 h2 {
   flex: none;
-  margin: 0 12% calc(4 * var(--milk-u));
+  margin: 0 12% 4cqw;
   text-align: center;
-  font-size: calc(5.5 * var(--milk-u));
+  font-size: 5.5cqw;
   color: #635d49;
   line-height: 1.5;
   background: url('/activity/milk-tea/img_s4_titleBg.png') center / 100% 100% no-repeat;
@@ -126,25 +131,25 @@ h2 {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: calc(1.5 * var(--milk-u)) 0 calc(3 * var(--milk-u));
+  padding: 1.5cqw 0 3cqw;
   scrollbar-width: thin;
   scrollbar-color: #c3a47b transparent;
   mask-image: linear-gradient(#000 96%, transparent);
 }
 .recipe-card {
   position: relative;
-  min-height: calc(38 * var(--milk-u));
-  margin-bottom: calc(2.6 * var(--milk-u));
-  padding: calc(3 * var(--milk-u)) calc(1.8 * var(--milk-u)) calc(1.5 * var(--milk-u));
+  min-height: 38cqw;
+  margin-bottom: 2.6cqw;
+  padding: 3cqw 1.8cqw 1.5cqw;
   box-sizing: border-box;
   background: url('/activity/milk-tea/img_s4TeaMaker_bg4.png') center / 100% 100% no-repeat;
 }
 .recipe-name {
   position: absolute;
-  top: calc(-2 * var(--milk-u));
-  left: calc(2 * var(--milk-u));
-  width: calc(21 * var(--milk-u));
-  height: calc(6.4 * var(--milk-u));
+  top: -2cqw;
+  left: 2cqw;
+  width: 21cqw;
+  height: 6.4cqw;
   object-fit: contain;
   z-index: 1;
 }
@@ -152,11 +157,11 @@ h2 {
   display: grid;
   grid-template-columns: 32% 36% 32%;
   align-items: center;
-  min-height: calc(17 * var(--milk-u));
+  min-height: 17cqw;
 }
 .drink-picture {
   position: relative;
-  height: calc(17 * var(--milk-u));
+  height: 17cqw;
   background: url('/activity/milk-tea/img_s4TeaMaker_shadow.png') center bottom / 65% auto no-repeat;
 }
 .drink-picture > img {
@@ -169,8 +174,8 @@ h2 {
 }
 .drink-picture > .lock {
   position: absolute;
-  width: calc(4 * var(--milk-u));
-  height: calc(5 * var(--milk-u));
+  width: 4cqw;
+  height: 5cqw;
   left: 40%;
   top: 40%;
 }
@@ -178,70 +183,70 @@ h2 {
 .recipe-estimate {
   display: flex;
   flex-direction: column;
-  gap: calc(0.8 * var(--milk-u));
-  font-size: calc(2.9 * var(--milk-u));
+  gap: 0.8cqw;
+  font-size: 2.9cqw;
   min-width: 0;
 }
 .recipe-price b {
   display: flex;
   align-items: center;
-  gap: calc(0.7 * var(--milk-u));
+  gap: 0.7cqw;
   color: #805438;
   overflow-wrap: anywhere;
 }
 .recipe-price img {
-  width: calc(4 * var(--milk-u));
-  height: calc(3.4 * var(--milk-u));
+  width: 4cqw;
+  height: 3.4cqw;
   object-fit: contain;
 }
 .coin {
   display: inline-grid;
   place-items: center;
-  width: calc(3.4 * var(--milk-u));
-  height: calc(3.4 * var(--milk-u));
+  width: 3.4cqw;
+  height: 3.4cqw;
   border-radius: 50%;
   background: #ffc52e;
-  border: calc(0.3 * var(--milk-u)) solid #efa01c;
+  border: 0.3cqw solid #efa01c;
   color: #b87616;
-  font-size: calc(1.1 * var(--milk-u));
+  font-size: 1.1cqw;
 }
 .recipe-estimate {
   text-align: center;
   align-self: start;
-  padding-top: calc(2 * var(--milk-u));
+  padding-top: 2cqw;
 }
 .recipe-estimate strong {
-  margin-top: calc(1 * var(--milk-u));
+  margin-top: 1cqw;
   color: #89472d;
-  font-size: calc(4.5 * var(--milk-u));
+  font-size: 4.5cqw;
 }
 .recipe-estimate small {
-  font-size: calc(3 * var(--milk-u));
-  margin-left: calc(0.4 * var(--milk-u));
+  font-size: 3cqw;
+  margin-left: 0.4cqw;
 }
 .recipe-empty {
   display: grid;
   place-items: center;
-  min-height: calc(14.5 * var(--milk-u));
+  min-height: 14.5cqw;
   margin: 0;
   color: #b39a62;
-  font-size: calc(2.8 * var(--milk-u));
+  font-size: 2.8cqw;
   text-align: center;
 }
 .fruit-list {
   display: flex;
-  gap: calc(1.5 * var(--milk-u));
+  gap: 1.5cqw;
   flex-wrap: wrap;
-  min-height: calc(14.5 * var(--milk-u));
-  padding: calc(1 * var(--milk-u));
+  min-height: 14.5cqw;
+  padding: 1cqw;
 }
 .fruit-choice {
   position: relative;
-  width: calc(12 * var(--milk-u));
-  height: calc(12 * var(--milk-u));
-  padding: calc(1 * var(--milk-u));
+  width: 12cqw;
+  height: 12cqw;
+  padding: 1cqw;
   background: url('/activity/milk-tea/img_s4TeaMaker_itemBg.png') center / 100% 100% no-repeat;
-  font-size: calc(2 * var(--milk-u));
+  font-size: 2cqw;
 }
 .fruit-choice.selected::after {
   content: '';
@@ -257,8 +262,8 @@ h2 {
 }
 .fruit-choice b {
   position: absolute;
-  bottom: calc(0.8 * var(--milk-u));
-  right: calc(1 * var(--milk-u));
+  bottom: 0.8cqw;
+  right: 1cqw;
   color: #805438;
 }
 .craft-footer {
@@ -267,15 +272,15 @@ h2 {
   display: grid;
   grid-template-columns: 23% 50% 27%;
   align-items: center;
-  padding: calc(2 * var(--milk-u)) 0 calc(3 * var(--milk-u));
-  font-size: calc(3.6 * var(--milk-u));
+  padding: 2cqw 0 3cqw;
+  font-size: 3.6cqw;
   color: #a36545;
 }
 .craft-confirm {
-  height: calc(12 * var(--milk-u));
+  height: 12cqw;
   padding: 0;
   font-weight: 900;
-  font-size: calc(4.4 * var(--milk-u));
+  font-size: 4.4cqw;
   background: url('/activity/milk-tea/img_s4_btn0.png') center / 100% 100% no-repeat;
   color: #665e4c;
 }
@@ -287,16 +292,16 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: end;
-  gap: calc(1 * var(--milk-u));
+  gap: 1cqw;
   cursor: pointer;
 }
 .select-all input {
   appearance: none;
-  width: calc(4.5 * var(--milk-u));
-  height: calc(4.5 * var(--milk-u));
+  width: 4.5cqw;
+  height: 4.5cqw;
   margin: 0;
-  border: calc(0.3 * var(--milk-u)) solid #bc885d;
-  border-radius: calc(0.5 * var(--milk-u));
+  border: 0.3cqw solid #bc885d;
+  border-radius: 0.5cqw;
   background: #a76c49;
 }
 .select-all input:checked {
@@ -304,10 +309,10 @@ h2 {
 }
 .craft-error {
   flex: 0 0 auto;
-  max-height: calc(9 * var(--milk-u));
+  max-height: 9cqw;
   overflow: auto;
-  margin: calc(-2 * var(--milk-u)) 0 calc(1 * var(--milk-u));
-  font-size: calc(2.5 * var(--milk-u));
+  margin: -2cqw 0 1cqw;
+  font-size: 2.5cqw;
   color: #ac3528;
 }
 </style>

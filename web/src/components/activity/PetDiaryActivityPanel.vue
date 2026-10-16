@@ -661,6 +661,9 @@ watch(pet, (value) => {
 }
 .pet-diary button {
   -webkit-tap-highlight-color: transparent;
+  /* 抵消全局触屏最小触控目标（style.css 的 pointer:coarse 规则）：本面板按画布等比缩放，44px 下限会把小按钮撑大互相遮挡 */
+  min-width: 0;
+  min-height: 0;
 }
 .pet-scroll {
   flex: 1;

@@ -20,7 +20,7 @@ defineProps<{ item: any, named?: boolean }>()
 }
 .reward-name {
   display: block;
-  font-size: calc(2.7 * var(--milk-u));
+  font-size: 2.7cqw;
   font-weight: 800;
   line-height: 1.3;
   overflow-wrap: anywhere;
@@ -29,10 +29,10 @@ defineProps<{ item: any, named?: boolean }>()
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  border: calc(0.6 * var(--milk-u)) solid #fff6dd;
-  border-radius: calc(2 * var(--milk-u));
+  border: 0.6cqw solid #fff6dd;
+  border-radius: 2cqw;
   background: #f6d477;
-  box-shadow: 0 calc(0.3 * var(--milk-u)) calc(0.3 * var(--milk-u)) #9c7b4a55;
+  box-shadow: 0 0.3cqw 0.3cqw #9c7b4a55;
 }
 .rarity-1 {
   background: #96ddee;
@@ -48,18 +48,18 @@ defineProps<{ item: any, named?: boolean }>()
 }
 .reward-frame b {
   position: absolute;
-  right: calc(0.4 * var(--milk-u));
+  right: 0.4cqw;
   bottom: 0;
-  font-size: calc(2.6 * var(--milk-u));
+  font-size: 2.6cqw;
   line-height: 1.1;
   color: #68482f;
-  text-shadow: 0 0 calc(0.4 * var(--milk-u)) #fff;
+  text-shadow: 0 0 0.4cqw #fff;
 }
 .reward-fallback {
   display: flex;
   height: 100%;
   align-items: center;
   justify-content: center;
-  font-size: calc(2.3 * var(--milk-u));
+  font-size: 2.3cqw;
 }
 </style>
