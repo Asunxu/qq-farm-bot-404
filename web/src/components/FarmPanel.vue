@@ -4,14 +4,17 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import FarmScene from '@/components/FarmScene.vue'
+import BaseSelect from '@/components/ui/BaseSelect.vue'
 import { useAccountStore } from '@/stores/account'
-import { useFarmStore } from '@/stores/farm'
+import { useFarmStore, type FertilizerType } from '@/stores/farm'
 import { useStatusStore } from '@/stores/status'
+import { useToastStore } from '@/stores/toast'
 
 const farmStore = useFarmStore()
 const accountStore = useAccountStore()
 const statusStore = useStatusStore()
-const { lands, summary, weather, loading, dogSkillGiftPendingCount, dogSkillGiftLoading, dogSkillGiftError } = storeToRefs(farmStore)
+const toast = useToastStore()
+const { lands, summary, weather, loading, dogSkillGiftPendingCount, dogSkillGiftLoading, dogSkillGiftError, fertilizeAllLoading } = storeToRefs(farmStore)
 const { currentAccountId, currentAccount } = storeToRefs(accountStore)
 const { status, loading: statusLoading, realtimeConnected, currentStatusReady } = storeToRefs(statusStore)
 
@@ -147,6 +150,65 @@ const operations = [
   { type: 'all', label: '一键全收', icon: 'i-carbon-flash', color: 'bg-orange-600 hover:bg-orange-700' },
 ]
 
+// 一键施肥（普通/有机化肥各施一次）
+const bulkFertilizerVisible = ref(false)
+const bulkFertilizerType = ref<FertilizerType>('normal')
+const bulkFertilizerOptions = [
+  { label: '普通化肥', value: 'normal' },
+  { label: '有机化肥', value: 'organic' },
+]
+const currentAccountRunning = computed(() => !!currentAccount.value?.running)
+
+// 与后端筛选口径保持一致：已解锁、非多格作物副地块、生长中且尚未成熟
+function isFertilizeCandidate(land: any) {
+  return !!land
+    && land.unlocked !== false
+    && !land.occupiedByMaster
+    && land.status === 'growing'
+    && Number(land.matureInSec) > 0
+}
+
+const bulkFertilizerCount = computed(() =>
+  (lands.value || []).filter(isFertilizeCandidate).length,
+)
+
+function formatFertilizerRemaining(totalSec: number) {
+  if (!totalSec || totalSec <= 0)
+    return ''
+  const day = Math.floor(totalSec / 86400)
+  const hour = Math.floor((totalSec % 86400) / 3600)
+  const minute = Math.floor((totalSec % 3600) / 60)
+  if (day > 0)
+    return `化肥剩余 ${day}天${hour}小时`
+  if (hour > 0)
+    return `化肥剩余 ${hour}小时${minute}分`
+  return `化肥剩余 ${minute}分`
+}
+
+async function handleBulkFertilize() {
+  if (!currentAccountId.value || !currentAccountRunning.value || operating.value || fertilizeAllLoading.value)
+    return
+  if (!bulkFertilizerCount.value) {
+    bulkFertilizerVisible.value = false
+    toast.info('当前没有可施肥的作物')
+    return
+  }
+  // store 内部已捕获网络与业务错误并写入 fertilizeAllError，失败时返回 null
+  const result = await farmStore.fertilizeAll(currentAccountId.value, bulkFertilizerType.value)
+  if (!result) {
+    toast.error(farmStore.fertilizeAllError || '一键施肥失败，请刷新土地确认最新状态')
+    return
+  }
+  bulkFertilizerVisible.value = false
+  if (!result.successCount) {
+    toast.info('当前没有可施肥的作物')
+    return
+  }
+  const skipped = result.skippedCount ? `，${result.skippedCount} 株未施肥` : ''
+  const remaining = formatFertilizerRemaining(Number(result.fertilizerRemainingSec || 0))
+  toast.success(`已为 ${result.successCount} 株作物施肥${skipped}${remaining ? `，${remaining}` : ''}`)
+}
+
 async function refresh() {
   if (currentAccountId.value) {
     const acc = currentAccount.value
@@ -200,6 +262,7 @@ function updateFarmStageSize() {
 watch(currentAccountId, (newId, oldId) => {
   if (oldId !== undefined && newId !== oldId) {
     farmLoaded.value = false
+    bulkFertilizerVisible.value = false
     farmStore.clearFarmData()
     statusStore.clearAccountScopedData()
   }
@@ -236,7 +299,7 @@ onUnmounted(() => {
 <template>
   <div
     class="space-y-4"
-    :class="{ 'farm-panel-modal-open': confirmVisible }"
+    :class="{ 'farm-panel-modal-open': confirmVisible || bulkFertilizerVisible }"
   >
     <div class="rounded-lg bg-white shadow dark:bg-gray-800">
       <!-- Header with Title and Actions -->
@@ -257,6 +320,14 @@ onUnmounted(() => {
             <div :class="op.icon" />
             <span class="hidden sm:inline">{{ op.label }}</span>
             <span class="sm:hidden">{{ op.type === 'clear' ? '务农' : op.label.replace('一键', '') }}</span>
+          </button>
+          <button
+            class="flex items-center justify-center gap-1.5 rounded bg-amber-600 px-3 py-2 text-sm text-white transition disabled:cursor-not-allowed hover:bg-amber-700 disabled:opacity-50"
+            :disabled="operating || fertilizeAllLoading || !currentAccountRunning || !bulkFertilizerCount"
+            @click="bulkFertilizerVisible = true"
+          >
+            <div class="i-carbon-soil-moisture" />
+            <span>一键施肥</span>
           </button>
           <button
             class="flex items-center justify-center gap-1.5 rounded bg-red-600 px-3 py-2 text-sm text-white transition disabled:cursor-not-allowed hover:bg-red-700 disabled:opacity-50"
@@ -366,5 +437,28 @@ onUnmounted(() => {
       @close="confirmVisible = false"
       @cancel="confirmVisible = false"
     />
+
+    <ConfirmModal
+      :show="bulkFertilizerVisible"
+      title="一键施肥"
+      message="将为所有生长中的作物施用一次所选化肥，确认施肥吗？"
+      confirm-text="确认施肥"
+      :loading="fertilizeAllLoading"
+      @confirm="handleBulkFertilize"
+      @close="bulkFertilizerVisible = false"
+      @cancel="bulkFertilizerVisible = false"
+    >
+      <div class="mt-4 text-left">
+        <BaseSelect
+          v-model="bulkFertilizerType"
+          label="化肥类型"
+          :options="bulkFertilizerOptions"
+          :disabled="fertilizeAllLoading"
+        />
+        <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+          可施肥 {{ bulkFertilizerCount }} 株作物
+        </p>
+      </div>
+    </ConfirmModal>
   </div>
 </template>

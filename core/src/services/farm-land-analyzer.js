@@ -460,11 +460,21 @@ function getQixiDewStatus(plant) {
 async function getLandsDetail() {
   try {
     const landsReply = await getAllLands();
-    const result = { lands: [], summary: {} };
-    if (!landsReply.lands) return result;
+    return buildLandsDetailFromReply(landsReply);
+  } catch {
+    return { lands: [], summary: {} };
+  }
+}
 
-    const serverTime = getServerTimeSec();
-    const details = [];
+/**
+ * 基于已获取的 AllLands 回包构建土地详情。
+ * 一键施肥等场景需要在同一份土地快照上筛选目标并合并服务端更新，复用此函数避免重复请求。
+ */
+function buildLandsDetailFromReply(landsReply, serverTime = getServerTimeSec()) {
+  const result = { lands: [], summary: {} };
+  if (!landsReply.lands) return result;
+
+  const details = [];
     const landMap = buildLandMap(landsReply.lands);
 
     for (const land of landsReply.lands) {
@@ -598,9 +608,6 @@ async function getLandsDetail() {
     }
 
     return { lands: details, summary: summarizeLandDetails(details) };
-  } catch {
-    return { lands: [], summary: {} };
-  }
 }
 
 module.exports = {
@@ -613,5 +620,6 @@ module.exports = {
   analyzeLands,
   resolveRemovableHarvestedLands,
   getQixiDewStatus,
-  getLandsDetail
+  getLandsDetail,
+  buildLandsDetailFromReply
 };

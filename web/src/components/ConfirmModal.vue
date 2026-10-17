@@ -103,6 +103,7 @@ function confirm() {
             <p :id="`${dialogId}-message`" class="confirm-modal-message">
               {{ message }}
             </p>
+            <slot />
           </div>
 
           <div class="confirm-modal-actions" :class="{ 'is-alert': isAlert }">

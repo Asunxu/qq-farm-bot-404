@@ -2134,6 +2134,9 @@ async function handleApiCall(msg) {
                 }
                 break;
             }
+            case 'fertilizeAllOwnLands':
+                result = await require('../services/fertilize-all').fertilizeAllOwnLands(args[0]);
+                break;
             case 'removePlant': {
                 const landId = Number(args[0]) || 0;
                 if (!landId) {

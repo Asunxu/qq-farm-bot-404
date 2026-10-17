@@ -74,6 +74,29 @@ function registerAdminFarmOperationRoutes({
     }
   });
 
+  // 一键施肥：对所有生长中作物各施一次所选化肥
+  app.post("/api/land/fertilize-all", async (req, res) => {
+    const accountId = requireAccountAccess({
+      req,
+      res,
+      getAccountIdFromRequest,
+      canAccessAccount,
+    });
+    if (!accountId) return;
+
+    const fertilizerType = req.body && req.body.fertilizerType;
+    if (fertilizerType !== "normal" && fertilizerType !== "organic") {
+      return res.status(400).json({ ok: false, error: "化肥类型必须是 normal 或 organic" });
+    }
+
+    try {
+      const data = await provider.fertilizeAllOwnLands(accountId, fertilizerType);
+      res.json({ ok: true, data });
+    } catch (error) {
+      sendProviderError(res, error);
+    }
+  });
+
   app.post("/api/land/remove", async (req, res) => {
     const accountId = requireAccountAccess({
       req,

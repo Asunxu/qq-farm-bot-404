@@ -102,6 +102,21 @@ async function fertilize(landIds, fertilizerId = NORMAL_FERTILIZER_ID) {
   return successCount;
 }
 
+/**
+ * 批量施肥 - 官方一键施肥：一条请求提交多个地块，每个地块只施一次
+ * @param {number[]} landIds - 地块 ID 列表
+ * @param {number} fertilizerId - 化肥类型
+ * @returns {object} FertilizeReply（含更新地块与逐地块消耗 land_op_drops）
+ */
+async function fertilizeBatch(landIds, fertilizerId) {
+  const payload = types.FertilizeRequest.encode(types.FertilizeRequest.create({
+    land_ids: landIds.map(id => toLong(id)),
+    fertilizer_id: toLong(fertilizerId)
+  })).finish();
+  const { body } = await sendMsgAsync('gamepb.plantpb.PlantService', 'Fertilize', payload);
+  return types.FertilizeReply.decode(body);
+}
+
 /** 铲除植物 */
 async function removePlant(landIds) {
   const payload = types.RemovePlantRequest.encode(types.RemovePlantRequest.create({
@@ -186,6 +201,7 @@ module.exports = {
   weedOut,
   insecticide,
   fertilize,
+  fertilizeBatch,
   removePlant,
   upgradeLand,
   unlockLand,

@@ -18,7 +18,19 @@ export interface Land {
   needWater?: boolean
   needWeed?: boolean
   needBug?: boolean
+  occupiedByMaster?: boolean
   [key: string]: any
+}
+
+export type FertilizerType = 'normal' | 'organic'
+
+export interface FertilizeAllResult {
+  fertilizerType: FertilizerType
+  requestedCount: number
+  successCount: number
+  skippedCount: number
+  fertilizerConsumedSec: number | null
+  fertilizerRemainingSec: number | null
 }
 
 export const useFarmStore = defineStore('farm', () => {
@@ -30,6 +42,8 @@ export const useFarmStore = defineStore('farm', () => {
   const dogSkillGiftPendingCount = ref(0)
   const dogSkillGiftLoading = ref(false)
   const dogSkillGiftError = ref('')
+  const fertilizeAllLoading = ref(false)
+  const fertilizeAllError = ref('')
 
   function clearFarmData() {
     lands.value = []
@@ -146,6 +160,31 @@ export const useFarmStore = defineStore('farm', () => {
     return data
   }
 
+  async function fertilizeAll(accountId: string, fertilizerType: FertilizerType) {
+    if (!accountId || fertilizeAllLoading.value)
+      return null
+    fertilizeAllLoading.value = true
+    fertilizeAllError.value = ''
+    try {
+      const { data } = await api.post('/api/land/fertilize-all', { fertilizerType }, {
+        headers: { 'x-account-id': accountId },
+      })
+      if (!data?.ok) {
+        fertilizeAllError.value = String(data?.error || '一键施肥失败')
+        return null
+      }
+      await fetchLands(accountId)
+      return data.data as FertilizeAllResult
+    }
+    catch (error: any) {
+      fertilizeAllError.value = String(error?.response?.data?.error || error?.message || '一键施肥失败')
+      return null
+    }
+    finally {
+      fertilizeAllLoading.value = false
+    }
+  }
+
   async function removePlant(accountId: string, landId: number) {
     if (!accountId)
       return
@@ -175,6 +214,8 @@ export const useFarmStore = defineStore('farm', () => {
     dogSkillGiftPendingCount,
     dogSkillGiftLoading,
     dogSkillGiftError,
+    fertilizeAllLoading,
+    fertilizeAllError,
     clearFarmData,
     fetchLands,
     fetchSeeds,
@@ -182,6 +223,7 @@ export const useFarmStore = defineStore('farm', () => {
     claimDogSkillGifts,
     operate,
     fertilizeLand,
+    fertilizeAll,
     removePlant,
     removeAllPlants,
   }
