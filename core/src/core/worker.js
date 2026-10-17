@@ -34,6 +34,8 @@ const {
     refreshFriendCheckLoop,
     runBadOnceOnStartup,
     runGoldenBugPlacement,
+    inFriendQuietHours,
+    getFriendQuietHoursRemainingSec,
     getFriendsList,
     getFriendLandsDetail,
     doFriendOperation,
@@ -903,6 +905,7 @@ async function runStarActivityAutoClaims() {
                 if (!['business', 'settling'].includes(currentPhase)) break;
                 try {
                     const state = await service.getMilkTea();
+                    const automation = getAutomation() || {};
                     if (!Number(state.summary.shop_open_at) && !['shareDaily', 'shareRewards', 'fundRewards'].includes(action)) continue;
                     let params = {};
                     if (action === 'buy') {
@@ -914,9 +917,8 @@ async function runStarActivityAutoClaims() {
                         const capacity = state.levels.find(x => x.level === Number(state.shop.level))?.employee_slot_count || 0;
                         const slot = Array.from({ length: capacity }, (_, i) => i).find(i => !state.shop.slots.some(x => Number(x.slot_index) === i && Number(x.end_at) > state.serverTime));
                         if (slot == null) continue;
-                        const options = getAutomation() || {};
                         params = { slotIndex: slot, autoSelect: true, ...require('../services/activity-milk-tea').normalizeHireOptions({
-                            durationId: options.milk_tea_hire_duration, talentId: options.milk_tea_hire_talent,
+                            durationId: automation.milk_tea_hire_duration, talentId: automation.milk_tea_hire_talent,
                         }) };
                     }
                     if (action === 'cashier' && !state.shop.pending_rewards.some(x => Number(x.count) > 0)) continue;
@@ -928,6 +930,11 @@ async function runStarActivityAutoClaims() {
                     if (action === 'shareDaily' && state.share?.daily?.daily_reward_claimed) continue;
                     if (action === 'shareRewards' && !state.share?.milestones?.some(x => Number(x.state) === 2)) continue;
                     if (action === 'fundRewards' && (!state.fund?.unlocked || !state.fund.tiers.some(x => Number(x.state) === 2))) continue;
+                    if (action === 'interact') {
+                        const shift = state.work?.my_shift;
+                        if (!shift || Number(shift.end_at) <= state.serverTime || state.work.interact_done || Number(shift.interact_count) >= Number(shift.interact_limit)) continue;
+                        params = { interactionType: Number(automation.milk_tea_work_interact_type) || 1 };
+                    }
                     await service.operateMilkTea(action, params);
                 } catch (error) {
                     // Mutation failures are logged by the shared service; retain query failures here.
@@ -1109,6 +1116,10 @@ function getBusinessDeferMs(kind) {
 
 async function runFarmTick(autoConfig) {
     if (farmTaskRunning || friendSyncPaused) return;
+    if (!autoConfig.farm) {
+        nextFarmRunAt = 0;
+        return;
+    }
     const deferMs = getBusinessDeferMs('farm');
     if (deferMs > 0) {
         nextFarmRunAt = Date.now() + deferMs;
@@ -1138,7 +1149,15 @@ let nextHelpRunAt = 0;
 
 async function runHelpTick(autoConfig) {
     if (helpTaskRunning || friendSyncPaused) return;
-    if (!autoConfig.friend_help && !autoConfig.friend_golden_bug) return;
+    if (!autoConfig.friend_help && !autoConfig.friend_golden_bug) {
+        nextHelpRunAt = 0;
+        return;
+    }
+    if (inFriendQuietHours()) {
+        const remain = getFriendQuietHoursRemainingSec();
+        nextHelpRunAt = Date.now() + (remain > 0 ? remain * 1000 : 60 * 1000);
+        return;
+    }
     const deferMs = getBusinessDeferMs('friend');
     if (deferMs > 0) {
         nextHelpRunAt = Date.now() + deferMs;
@@ -1180,8 +1199,7 @@ let nextStealRunAt = 0;
 async function runStealTick(autoConfig) {
     if (stealTaskRunning || friendSyncPaused) return;
     if (!autoConfig.friend_steal) {
-        const disabledDelay = randomIntervalMs(CONFIG.stealCheckIntervalMin || 25000, CONFIG.stealCheckIntervalMax || 30000);
-        nextStealRunAt = Date.now() + disabledDelay;
+        nextStealRunAt = 0;
         return;
     }
     const deferMs = getBusinessDeferMs('friend');
@@ -2312,7 +2330,9 @@ function syncStatus() {
         farmRemainSec,
         helpRemainSec,
         stealRemainSec,
-        friendRemainSec: Math.max(helpRemainSec, stealRemainSec)
+        friendRemainSec: Math.max(helpRemainSec, stealRemainSec),
+        inQuietHours: inFriendQuietHours(),
+        quietHoursRemainSec: getFriendQuietHoursRemainingSec()
     };
     stats.automation = getAutomation();
     stats.levelProgress = levelProgress;

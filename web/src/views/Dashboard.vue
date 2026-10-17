@@ -248,6 +248,8 @@ const localUptime = ref(0)
 let localNextFarmRemainSec = 0
 let localNextHelpRemainSec = 0
 let localNextStealRemainSec = 0
+const localInQuietHours = ref(false)
+const localQuietHoursRemainSec = ref(0)
 const farmCountdownTotal = ref(1)
 const helpCountdownTotal = ref(1)
 const stealCountdownTotal = ref(1)
@@ -260,6 +262,8 @@ function resetDashboardState() {
   localNextFarmRemainSec = 0
   localNextHelpRemainSec = 0
   localNextStealRemainSec = 0
+  localInQuietHours.value = false
+  localQuietHoursRemainSec.value = 0
   farmCountdownTotal.value = 1
   helpCountdownTotal.value = 1
   stealCountdownTotal.value = 1
@@ -337,25 +341,44 @@ function updateCountdowns() {
 
   localUptime.value++
 
+  const auto = status.value?.automation || {}
+  const inQuietHours = localInQuietHours.value
+  const quietRemain = localQuietHoursRemainSec.value
+
   if (localNextFarmRemainSec > 0) {
     localNextFarmRemainSec--
     nextFarmCheck.value = formatDuration(localNextFarmRemainSec)
+  }
+  else if (!auto.farm) {
+    nextFarmCheck.value = '未开启'
   }
   else {
     nextFarmCheck.value = '检查中...'
   }
 
-  if (localNextHelpRemainSec > 0) {
+  if (inQuietHours && (auto.friend_help || auto.friend_golden_bug)) {
+    nextHelpCheck.value = quietRemain > 0 ? `静默期 ${formatDuration(quietRemain)}` : '静默期'
+  }
+  else if (localNextHelpRemainSec > 0) {
     localNextHelpRemainSec--
     nextHelpCheck.value = formatDuration(localNextHelpRemainSec)
+  }
+  else if (!auto.friend_help && !auto.friend_golden_bug) {
+    nextHelpCheck.value = '未开启'
   }
   else {
     nextHelpCheck.value = '检查中...'
   }
 
-  if (localNextStealRemainSec > 0) {
+  if (inQuietHours && auto.friend_steal) {
+    nextStealCheck.value = quietRemain > 0 ? `静默期 ${formatDuration(quietRemain)}` : '静默期'
+  }
+  else if (localNextStealRemainSec > 0) {
     localNextStealRemainSec--
     nextStealCheck.value = formatDuration(localNextStealRemainSec)
+  }
+  else if (!auto.friend_steal) {
+    nextStealCheck.value = '未开启'
   }
   else {
     nextStealCheck.value = '检查中...'
@@ -367,6 +390,8 @@ watch(status, (newVal) => {
     const farmRemainSec = newVal.nextChecks.farmRemainSec || 0
     const helpRemainSec = newVal.nextChecks.helpRemainSec || 0
     const stealRemainSec = newVal.nextChecks.stealRemainSec || 0
+    localInQuietHours.value = !!newVal.nextChecks.inQuietHours
+    localQuietHoursRemainSec.value = newVal.nextChecks.quietHoursRemainSec || 0
     syncCountdownTotal(farmCountdownTotal, farmRemainSec, localNextFarmRemainSec)
     syncCountdownTotal(helpCountdownTotal, helpRemainSec, localNextHelpRemainSec)
     syncCountdownTotal(stealCountdownTotal, stealRemainSec, localNextStealRemainSec)

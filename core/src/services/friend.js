@@ -41,4 +41,6 @@ module.exports = {
   bootstrapQqFriendGids: friendApi.bootstrapQqFriendGids,
   fetchFriendsDogInfo,
   delFriend: friendApi.delFriend,
+  inFriendQuietHours: friendApi.inFriendQuietHours,
+  getFriendQuietHoursRemainingSec: friendApi.getFriendQuietHoursRemainingSec,
 };

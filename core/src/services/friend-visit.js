@@ -515,7 +515,8 @@ async function visitFriend(friend, tally, myGid, accountId) {
 /**
  * Visit a friend specifically to steal crops.
  */
-async function visitFriendForSteal(friend, tally, myGid, accountId) {
+async function visitFriendForSteal(friend, tally, myGid, accountId, opts = {}) {
+  const { operationDelayMs = 0 } = opts;
   const { gid, name } = friend;
   let enterReply;
 
@@ -604,7 +605,13 @@ async function visitFriendForSteal(friend, tally, myGid, accountId) {
         actionLogs.push(`偷${stolen}${namesStr ? `(${namesStr})` : ''}`);
         tally.steal += stolen;
         recordOperation('steal', stolen);
-        await randomDelay(500, 1000);
+        if (operationDelayMs > 0) {
+          const jitter = Math.max(100, Math.floor(operationDelayMs * 0.2));
+          await randomDelay(Math.max(0, operationDelayMs - jitter), operationDelayMs + jitter);
+        }
+        else {
+          await randomDelay(500, 1000);
+        }
       }
     }
   }

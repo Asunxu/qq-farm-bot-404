@@ -90,22 +90,6 @@ function handleOperate(opType: string) {
   confirmVisible.value = true
 }
 
-function handleRemoveAllPlants() {
-  if (!currentAccountId.value)
-    return
-
-  confirmConfig.value = {
-    title: '确认一键铲除',
-    message: '确定要铲除全部已种植作物吗？此操作不可恢复。',
-    opType: '',
-    bulkAction: 'removeAll',
-    landAction: '',
-    land: null,
-    type: 'danger',
-  }
-  confirmVisible.value = true
-}
-
 function getLandActionName(land: any) {
   return `#${land?.id ?? '-'} ${land?.plantName || '该作物'}`
 }
@@ -328,14 +312,6 @@ onUnmounted(() => {
           >
             <div class="i-carbon-soil-moisture" />
             <span>一键施肥</span>
-          </button>
-          <button
-            class="flex items-center justify-center gap-1.5 rounded bg-red-600 px-3 py-2 text-sm text-white transition disabled:cursor-not-allowed hover:bg-red-700 disabled:opacity-50"
-            :disabled="operating"
-            @click="handleRemoveAllPlants"
-          >
-            <div class="i-carbon-trash-can" />
-            一键铲除
           </button>
         </div>
       </div>

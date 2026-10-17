@@ -902,6 +902,37 @@ function inFriendQuietHours(now = new Date()) {
   return currentMin >= startMin || currentMin < endMin;
 }
 
+/** Seconds remaining until friend quiet hours end; 0 if not in quiet hours or config invalid. */
+function getFriendQuietHoursRemainingSec(now = new Date()) {
+  const { getFriendQuietHours } = require('../models/store');
+  const quietHours = getFriendQuietHours();
+  if (!quietHours || !quietHours.enabled) return 0;
+
+  const startMin = parseTimeToMinutes(quietHours.start);
+  const endMin = parseTimeToMinutes(quietHours.end);
+  if (startMin === null || endMin === null) return 0;
+
+  const currentMin = now.getHours() * 60 + now.getMinutes();
+  const currentSec = currentMin * 60 + now.getSeconds();
+  const dayMin = 24 * 60;
+
+  let endSec;
+  if (startMin === endMin) {
+    return 0; // All-day quiet: no concrete end
+  }
+  if (startMin < endMin) {
+    if (currentMin < startMin || currentMin >= endMin) return 0;
+    endSec = endMin * 60;
+  } else {
+    // Crosses midnight
+    if (currentMin < startMin && currentMin >= endMin) return 0;
+    endSec = endMin <= startMin ? (endMin + dayMin) * 60 : endMin * 60;
+    const nowSec = currentMin >= startMin ? currentSec : currentSec + dayMin * 60;
+    return Math.max(0, Math.ceil(endSec - nowSec));
+  }
+  return Math.max(0, Math.ceil(endSec - currentSec));
+}
+
 /** Clear all cooldown marks for invalid friend GIDs. */
 function clearAllInvalidKnownFriendGidCooldown() {
   invalidKnownFriendGidCooldownUntil.clear();
@@ -927,6 +958,7 @@ module.exports = {
   removeKnownFriendGid,
   parseTimeToMinutes,
   inFriendQuietHours,
+  getFriendQuietHoursRemainingSec,
   getAllFriends,
   bootstrapQqFriendGids,
   getApplications,

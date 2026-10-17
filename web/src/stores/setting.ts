@@ -46,6 +46,8 @@ export interface AutomationConfig {
   milk_tea_hire?: boolean
   milk_tea_hire_duration?: number
   milk_tea_hire_talent?: number
+  milk_tea_work_interact?: boolean
+  milk_tea_work_interact_type?: number
   milk_tea_seed_buy?: boolean
   pet_diary_feed?: boolean
   pet_diary_draw?: boolean
@@ -87,6 +89,8 @@ export interface IntervalsConfig {
   friendMax?: number
   helpMin?: number
   helpMax?: number
+  stealMin?: number
+  stealMax?: number
 }
 
 export interface FriendQuietHoursConfig {
@@ -144,6 +148,7 @@ export interface SettingsState {
   ui: UIConfig
   offlineReminder: OfflineConfig
   stealDelaySeconds: number
+  stealScheduleMode: 'dynamic' | 'manual'
   fertilizerBuyOrganicCount: number
   fertilizerBuyOrganicThresholdHours: number
   fertilizerBuyNormalCount: number
@@ -205,6 +210,7 @@ export const useSettingStore = defineStore('setting', () => {
     ui: {},
     offlineReminder: createDefaultOfflineReminder(),
     stealDelaySeconds: 0,
+    stealScheduleMode: 'dynamic',
     fertilizerBuyOrganicCount: 10,
     fertilizerBuyOrganicThresholdHours: 10,
     fertilizerBuyNormalCount: 10,
@@ -241,6 +247,7 @@ export const useSettingStore = defineStore('setting', () => {
       ui: {},
       offlineReminder: createDefaultOfflineReminder(),
       stealDelaySeconds: 0,
+      stealScheduleMode: 'dynamic',
       fertilizerBuyOrganicCount: 10,
       fertilizerBuyOrganicThresholdHours: 10,
       fertilizerBuyNormalCount: 10,
@@ -281,6 +288,7 @@ export const useSettingStore = defineStore('setting', () => {
         settings.value.autoAcceptFriendMinLevel = d.autoAcceptFriendMinLevel ?? 0
         settings.value.offlineReminder = normalizeOfflineReminder(d.offlineReminder)
         settings.value.stealDelaySeconds = d.stealDelaySeconds ?? 0
+        settings.value.stealScheduleMode = d.stealScheduleMode === 'manual' ? 'manual' : 'dynamic'
         settings.value.fertilizerBuyOrganicCount = d.fertilizerBuyOrganicCount ?? 10
         settings.value.fertilizerBuyOrganicThresholdHours = d.fertilizerBuyOrganicThresholdHours ?? 10
         settings.value.fertilizerBuyNormalCount = d.fertilizerBuyNormalCount ?? 10
@@ -321,6 +329,7 @@ export const useSettingStore = defineStore('setting', () => {
         intervals: newSettings.intervals,
         friendQuietHours: newSettings.friendQuietHours,
         stealDelaySeconds: newSettings.stealDelaySeconds ?? 0,
+        stealScheduleMode: newSettings.stealScheduleMode === 'manual' ? 'manual' : 'dynamic',
         fertilizerBuyOrganicCount: newSettings.fertilizerBuyOrganicCount ?? 10,
         fertilizerBuyOrganicThresholdHours: newSettings.fertilizerBuyOrganicThresholdHours ?? 10,
         fertilizerBuyNormalCount: newSettings.fertilizerBuyNormalCount ?? 10,

@@ -7,6 +7,9 @@ const {
   applyConfigSnapshot,
   getFriendBadRetryDate,
   readFriendDogInfoCache,
+  getStealScheduleMode,
+  getStealDelaySeconds,
+  getIntervals,
 } = require('../models/store');
 const { getUserState, isConnected, networkEvents } = require('../utils/network');
 const { toNum, log, logWarn, randomDelay } = require('../utils/utils');
@@ -16,6 +19,7 @@ const {
   getAllFriends,
   extractReplyFriends,
   inFriendQuietHours,
+  getFriendQuietHoursRemainingSec,
   postToMaster,
   normalizeFriendGids,
   syncKnownFriendGidsFromFriends,
@@ -517,18 +521,45 @@ async function checkFriends(options = {}) {
   }
 }
 
+function getConfiguredStealDelayMs(accountId) {
+  const intervals = getIntervals(accountId) || {};
+  const min = Math.max(1, Number(intervals.stealMin) || 25) * 1000;
+  const max = Math.max(min, (Number(intervals.stealMax) || 30) * 1000);
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+function resolveStealDelayMs(accountId) {
+  return getStealScheduleMode(accountId) === 'manual'
+    ? getConfiguredStealDelayMs(accountId)
+    : getNextStealDelayMs();
+}
+
 async function runScheduledStealCheck() {
   const accountId = process.env.FARM_ACCOUNT_ID || '';
   const userState = getUserState();
+  const operationDelayMs = Math.max(0, getStealDelaySeconds(accountId) * 1000);
   if (!isAutomationOn('friend') || !isAutomationOn('friend_steal') || !isConnected()) {
-    return getNextStealDelayMs();
+    return resolveStealDelayMs(accountId);
   }
-  if (isCheckingFriends || !userState.gid || inFriendQuietHours()) {
+  if (isCheckingFriends || !userState.gid) {
     return 60 * 1000;
+  }
+  if (inFriendQuietHours()) {
+    const remain = getFriendQuietHoursRemainingSec();
+    return remain > 0 ? remain * 1000 : 60 * 1000;
   }
 
   isCheckingFriends = true;
   const tally = { steal: 0, water: 0, weed: 0, bug: 0, putBug: 0, putWeed: 0 };
+  const opDelay = async () => {
+    if (operationDelayMs > 0) {
+      const jitter = Math.max(100, Math.floor(operationDelayMs * 0.2));
+      await randomDelay(Math.max(0, operationDelayMs - jitter), operationDelayMs + jitter);
+    }
+    else {
+      await randomDelay(800, 1600);
+    }
+  };
   try {
     const targets = new Map();
     for (const target of claimDueFriends({ limit: 12 })) targets.set(toNum(target.gid), target);
@@ -556,13 +587,13 @@ async function runScheduledStealCheck() {
     for (const target of visitTargets) {
       if (!canOperate(0x2714)) break;
       try {
-        await visitFriendForSteal(target, tally, userState.gid, accountId);
+        await visitFriendForSteal(target, tally, userState.gid, accountId, { operationDelayMs });
       } catch (err) {
         if (!isTransientNetworkError(err)) {
           logWarn('好友', `定时偷菜检查失败: ${target.name || target.gid}: ${err.message}`);
         }
       }
-      await randomDelay(800, 1600);
+      await opDelay();
     }
 
     if (rawFriends.length > 0) {
@@ -580,7 +611,7 @@ async function runScheduledStealCheck() {
         } catch (err) {
           handleFriendEnterError(gid, friend.name || `GID:${gid}`, err);
         }
-        await randomDelay(800, 1600);
+        await opDelay();
       }
     }
 
@@ -593,7 +624,7 @@ async function runScheduledStealCheck() {
   } finally {
     isCheckingFriends = false;
   }
-  return getNextStealDelayMs();
+  return resolveStealDelayMs(accountId);
 }
 
 // ===== Friend check loop =====

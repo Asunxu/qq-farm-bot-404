@@ -10,7 +10,7 @@ function normalizeWireMaps(value) {
 }
 const WINDOW = { startTime: 1792029600, settleTime: 1794671999, endTime: 1794844799 };
 const ACTIONS = { create: [53, 'create_shop'], rename: [54, 'rename_shop'], shop: [55, 'get_shop'], hireList: [56, 'get_hire_list'], hire: [57, 'hire'], workshop: [58, 'get_workshop'], cashier: [59, 'claim_cashier'], boost: [60, 'boost'], upgrade: [61, 'upgrade'], craft: [62, 'craft'], work: [63, 'get_work_page'], wages: [64, 'claim_wages'], interact: [65, 'interact'], rank: [66, 'get_rank'], sales: [67, 'get_sales_log'], hireDisabled: [68, 'set_hire_disable'] };
-const AUTO_ACTIONS = { milk_tea_cashier: 'cashier', milk_tea_wages: 'wages', milk_tea_upgrade: 'upgrade', milk_tea_craft: 'craft', milk_tea_boost: 'boost', milk_tea_hire: 'hire', milk_tea_seed_buy: 'buy', milk_tea_share_daily: 'shareDaily', milk_tea_share_rewards: 'shareRewards', milk_tea_fund_rewards: 'fundRewards' };
+const AUTO_ACTIONS = { milk_tea_cashier: 'cashier', milk_tea_wages: 'wages', milk_tea_upgrade: 'upgrade', milk_tea_craft: 'craft', milk_tea_boost: 'boost', milk_tea_hire: 'hire', milk_tea_seed_buy: 'buy', milk_tea_share_daily: 'shareDaily', milk_tea_share_rewards: 'shareRewards', milk_tea_fund_rewards: 'fundRewards', milk_tea_work_interact: 'interact' };
 function phase(now, window = WINDOW) { return now < window.startTime ? 'upcoming' : now > window.endTime ? 'ended' : now >= window.settleTime ? 'settling' : 'business'; }
 // Official S4ShopUI: available, sold out, locked; then configured order.
 function compareShopGoods(a, b) {

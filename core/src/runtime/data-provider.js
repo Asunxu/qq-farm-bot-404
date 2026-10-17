@@ -298,6 +298,8 @@ function createDataProvider(deps) {
                 bagSeedKnownIds: s.bagSeedKnownIds,
                 bagSeedExcludedIds: s.bagSeedExcludedIds,
                 bagSeedFallbackStrategy: s.bagSeedFallbackStrategy,
+                stealDelaySeconds: s.stealDelaySeconds,
+                stealScheduleMode: s.stealScheduleMode,
             };
             store.applyConfigSnapshot(patch, { accountId: id });
             const rev = nextConfigRevision();
@@ -323,6 +325,8 @@ function createDataProvider(deps) {
                 bagSeedPriority: store.getBagSeedPriority(id),
                 bagSeedExcludedIds: store.getBagSeedExcludedIds(id),
                 bagSeedFallbackStrategy: store.getBagSeedFallbackStrategy(id),
+                stealDelaySeconds: store.getStealDelaySeconds(id),
+                stealScheduleMode: store.getStealScheduleMode(id),
                 configRevision: rev
             };
         },

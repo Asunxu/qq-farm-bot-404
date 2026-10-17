@@ -294,6 +294,8 @@ const DEFAULT_AUTOMATION = {
     milk_tea_hire: false,
     milk_tea_hire_duration: 1,
     milk_tea_hire_talent: 0,
+    milk_tea_work_interact: false,
+    milk_tea_work_interact_type: 1,
     milk_tea_seed_buy: false,
     pet_diary_feed: false,
     pet_diary_draw: false,
@@ -366,7 +368,7 @@ const SHARE_REWARD_AUTOMATION_KEYS = ['share_reward_share', 'share_reward_daily'
 // 否则前端会显示后端已强制关闭的开关。
 const TIMED_ACTIVITY_AUTOMATION_GROUPS = [
     { startTime: 1792029600, endTime: 1794844799, keys: ['mall_coupon_gift_buy', 'milk_tea_cashier', 'milk_tea_wages', 'milk_tea_share_daily', 'milk_tea_share_rewards', 'milk_tea_fund_rewards'] },
-    { startTime: 1792029600, endTime: 1794671998, keys: ['milk_tea_upgrade', 'milk_tea_craft', 'milk_tea_boost', 'milk_tea_hire', 'milk_tea_seed_buy'] },
+    { startTime: 1792029600, endTime: 1794671998, keys: ['milk_tea_upgrade', 'milk_tea_craft', 'milk_tea_boost', 'milk_tea_hire', 'milk_tea_seed_buy', 'milk_tea_work_interact'] },
     { startTime: 1790179200, endTime: 1791388799, keys: WISH_SIGN_AUTOMATION_KEYS },
     { startTime: 1790179200, endTime: 1791820799, keys: SHARE_REWARD_AUTOMATION_KEYS },
     {
@@ -432,7 +434,9 @@ const DEFAULT_INTERVALS = {
     farmMin: 2,
     farmMax: 5,
     helpMin: 30,
-    helpMax: 35
+    helpMax: 35,
+    stealMin: 25,
+    stealMax: 30
 };
 
 /** 默认静默时段 */
@@ -469,6 +473,7 @@ const DEFAULT_ACCOUNT_CONFIG = {
     prioritizeGrowthTasks: false,
     plantSeedPriority: [],
     stealDelaySeconds: 1,
+    stealScheduleMode: 'dynamic',
     friendBadRetryDate: '',
     intervals: DEFAULT_INTERVALS,
     friendQuietHours: DEFAULT_QUIET_HOURS,
@@ -675,7 +680,11 @@ function normalizeIntervals(raw) {
     let helpMax = toInt(input.helpMax, 35);
     if (helpMin > helpMax) [helpMin, helpMax] = [helpMax, helpMin];
 
-    return { ...input, farm, farmMin, farmMax, helpMin, helpMax };
+    let stealMin = toInt(input.stealMin, 25);
+    let stealMax = toInt(input.stealMax, 30);
+    if (stealMin > stealMax) [stealMin, stealMax] = [stealMax, stealMin];
+
+    return { ...input, farm, farmMin, farmMax, helpMin, helpMax, stealMin, stealMax };
 }
 
 // ==================== 配置克隆/合并 ====================
@@ -846,6 +855,9 @@ function normalizeAccountConfig(raw, fallbackConfig = accountFallbackConfig) {
     if (input.stealDelaySeconds !== undefined && input.stealDelaySeconds !== null) {
         cfg.stealDelaySeconds = Math.max(0, Math.min(60, Number(input.stealDelaySeconds) || 0));
     }
+    if (input.stealScheduleMode !== undefined && input.stealScheduleMode !== null) {
+        cfg.stealScheduleMode = String(input.stealScheduleMode) === 'manual' ? 'manual' : 'dynamic';
+    }
     if (input.prioritizeGrowthTasks !== undefined && input.prioritizeGrowthTasks !== null) {
         cfg.prioritizeGrowthTasks = input.prioritizeGrowthTasks === true;
     }
@@ -946,6 +958,7 @@ function pickDefaultPlanConfig(raw) {
         auto2x2SyncBuy: cfg.auto2x2SyncBuy === true,
         plantSeedPriority: [...(cfg.plantSeedPriority || [])],
         stealDelaySeconds: Math.max(0, Math.min(60, Number(cfg.stealDelaySeconds) || 0)),
+        stealScheduleMode: cfg.stealScheduleMode === 'manual' ? 'manual' : 'dynamic',
         prioritizeGrowthTasks: cfg.prioritizeGrowthTasks === true || cfg.plantingStrategy === 'task_priority',
         intervals: { ...cfg.intervals },
         friendQuietHours: { ...cfg.friendQuietHours },
@@ -1296,6 +1309,7 @@ function getConfigSnapshot(accountId) {
         auto2x2SyncBuy: cfg.auto2x2SyncBuy === true,
         plantSeedPriority: [...(cfg.plantSeedPriority || [])],
         stealDelaySeconds: Math.max(0, Math.min(60, Number(cfg.stealDelaySeconds) || 0)),
+        stealScheduleMode: cfg.stealScheduleMode === 'manual' ? 'manual' : 'dynamic',
         prioritizeGrowthTasks: cfg.prioritizeGrowthTasks === true || cfg.plantingStrategy === 'task_priority',
         friendBadRetryDate: String(cfg.friendBadRetryDate || ''),
         intervals: { ...cfg.intervals },
@@ -1369,6 +1383,9 @@ function applyConfigSnapshot(patch = {}, opts = {}) {
     }
     if (patch.stealDelaySeconds !== undefined && patch.stealDelaySeconds !== null) {
         cfg.stealDelaySeconds = Math.max(0, Math.min(60, Number(patch.stealDelaySeconds) || 0));
+    }
+    if (patch.stealScheduleMode !== undefined && patch.stealScheduleMode !== null) {
+        cfg.stealScheduleMode = String(patch.stealScheduleMode) === 'manual' ? 'manual' : 'dynamic';
     }
     if (patch.prioritizeGrowthTasks !== undefined && patch.prioritizeGrowthTasks !== null) {
         cfg.prioritizeGrowthTasks = patch.prioritizeGrowthTasks === true;
@@ -1509,6 +1526,11 @@ function getPrioritize2x2Crops(accountId) {
 function getStealDelaySeconds(accountId) {
     const cfg = getAccountConfigSnapshot(accountId);
     return Math.max(0, Math.min(60, Number(cfg.stealDelaySeconds) || 0));
+}
+
+function getStealScheduleMode(accountId) {
+    const cfg = getAccountConfigSnapshot(accountId);
+    return cfg.stealScheduleMode === 'manual' ? 'manual' : 'dynamic';
 }
 
 function getAuto2x2SyncBuy(accountId) {
@@ -2125,6 +2147,7 @@ module.exports = {
     getAuto2x2SyncBuy,
     getPlantSeedPriority,
     getStealDelaySeconds,
+    getStealScheduleMode,
     getPrioritizeGrowthTasks,
     getFriendBadRetryDate,
     getBagSeedPriority,

@@ -45,7 +45,8 @@ export function useStrategySettings({
     bagSeedFallbackStrategy: 'level',
     plantSeedPriority: [] as number[],
     stealDelaySeconds: 0,
-    intervals: { farmMin: 2, farmMax: 5, helpMin: 10, helpMax: 15, stealMin: 10, stealMax: 15 },
+    stealScheduleMode: 'dynamic' as 'dynamic' | 'manual',
+    intervals: { farmMin: 2, farmMax: 5, helpMin: 10, helpMax: 15, stealMin: 25, stealMax: 30 },
     friendQuietHours: { enabled: false, start: '23:00', end: '07:00' },
   })
 
@@ -154,6 +155,7 @@ export function useStrategySettings({
         bagSeedFallbackStrategy: settings.value.bagSeedFallbackStrategy ?? 'level',
         plantSeedPriority: settings.value.plantSeedPriority ?? [],
         stealDelaySeconds: settings.value.stealDelaySeconds ?? 0,
+        stealScheduleMode: settings.value.stealScheduleMode === 'manual' ? 'manual' : 'dynamic',
         intervals: settings.value.intervals,
         friendQuietHours: settings.value.friendQuietHours,
       }))

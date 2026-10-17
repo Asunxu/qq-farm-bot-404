@@ -65,6 +65,8 @@ function createRuntimeState(deps) {
             bagSeedFallbackStrategy: store.getBagSeedFallbackStrategy(accountId),
             autoAcceptFriendMinLevel: store.getAutoAcceptFriendMinLevel(accountId),
             capitalMode: store.getCapitalMode(accountId),
+            stealScheduleMode: store.getStealScheduleMode(accountId),
+            stealDelaySeconds: store.getStealDelaySeconds(accountId),
             __revision: configRevision
         };
     }

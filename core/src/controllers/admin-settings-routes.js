@@ -135,6 +135,14 @@ function buildSettingsPayload(store, accountId, currentUser) {
       accountId && typeof store.getBagSeedFallbackStrategy === "function"
         ? store.getBagSeedFallbackStrategy(accountId)
         : "level",
+    stealDelaySeconds:
+      accountId && typeof store.getStealDelaySeconds === "function"
+        ? store.getStealDelaySeconds(accountId)
+        : 1,
+    stealScheduleMode:
+      accountId && typeof store.getStealScheduleMode === "function"
+        ? store.getStealScheduleMode(accountId)
+        : "dynamic",
     ui: store.getUI(),
     offlineReminder:
       store.getOfflineReminder && currentUser
