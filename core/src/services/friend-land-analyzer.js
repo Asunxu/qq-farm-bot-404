@@ -7,6 +7,7 @@ const {
   getMutantDisplayPlantId,
   getMutantPlantImageByPhase,
   getMutantEffectsByIds,
+  getItemImageById,
 } = require('../config/gameConfig');
 const {
   toNum,
@@ -312,6 +313,7 @@ async function fetchFriendsList() {
           gold: toNum(friend.gold),
           dogId: cachedDog ? cachedDog.dogId : 0,
           dogName: cachedDog ? cachedDog.dogName : '',
+          dogImage: cachedDog ? (cachedDog.dogImage || '') : '',
           plant: friend.plant
             ? {
                 stealNum: toNum(friend.plant.steal_plant_num),
@@ -379,17 +381,19 @@ async function fetchFriendsDogInfo() {
   const syncResult = await runWithRequestPriority('background', () => batchGetFriendDogInfo(dogTargets));
   const { map: dogMap, failCount, blacklistCount } = syncResult;
 
-  const guardDogFriends = {};
+  const allDogFriends = {};
   for (const friend of friends) {
     const dogInfo = dogMap.get(friend.gid);
     if (dogInfo) {
       friend.dogId = dogInfo.dogId;
       friend.dogName = dogInfo.dogName;
+      friend.dogImage = friend.dogId > 0 ? (getItemImageById(friend.dogId) || '') : '';
       friend.blacklisted = dogInfo.blacklisted || false;
-      if (friend.dogId === 90021) {
-        guardDogFriends[friend.gid] = {
+      if (friend.dogId > 0) {
+        allDogFriends[friend.gid] = {
           dogId: friend.dogId,
           dogName: friend.dogName,
+          dogImage: friend.dogImage,
         };
       }
     }
@@ -397,21 +401,25 @@ async function fetchFriendsDogInfo() {
 
   friendsListCache = friends;
 
-  // Persist guard dog info to disk cache
+  // Persist all dog info to disk cache
   if (accountId && syncResult.deferredGids.length === 0) {
-    writeFriendDogInfoCache(accountId, guardDogFriends);
+    writeFriendDogInfoCache(accountId, allDogFriends);
   }
 
   const guardDogCount = friends.filter(f => f.dogId === 90021).length;
+  const otherDogCount = friends.filter(f => f.dogId > 0 && f.dogId !== 90021).length;
+  const totalDogCount = guardDogCount + otherDogCount;
 
   log('好友',
-    `获取完成：共 ${friends.length} 个好友，护主犬 ${guardDogCount} 个，无狗 ${failCount} 个，黑名单 ${blacklistCount} 个`,
+    `获取狗信息完成：共 ${friends.length} 位好友，其中养狗 ${totalDogCount} 位 (护主犬 ${guardDogCount} / 其他宠物犬 ${otherDogCount})，无狗 ${failCount} 位，黑名单 ${blacklistCount} 位`,
     {
       module: 'friend',
       event: '狗信息',
       result: 'ok',
       count: friends.length,
+      totalDogCount,
       guardDogCount,
+      otherDogCount,
       failCount,
       blacklistCount,
     }

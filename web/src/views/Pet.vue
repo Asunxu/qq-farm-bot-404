@@ -76,6 +76,36 @@ async function load() {
   }
 }
 
+const autoToggling = ref(false)
+
+async function toggleAutoBuyFood(val: boolean) {
+  const id = String(currentAccountId.value || '')
+  if (!id || autoToggling.value) return
+  autoToggling.value = true
+  try {
+    await petStore.setAutoConfig(id, { autoBuyFood: val })
+    toast.success(`自动买粮已${val ? '开启' : '关闭'}`)
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || e?.message || '设置失败')
+  } finally {
+    autoToggling.value = false
+  }
+}
+
+async function toggleAutoFeedDog(val: boolean) {
+  const id = String(currentAccountId.value || '')
+  if (!id || autoToggling.value) return
+  autoToggling.value = true
+  try {
+    await petStore.setAutoConfig(id, { autoFeedDog: val })
+    toast.success(`自动喂食已${val ? '开启' : '关闭'}`)
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || e?.message || '设置失败')
+  } finally {
+    autoToggling.value = false
+  }
+}
+
 async function action(run: () => Promise<any>, message: string) {
   try {
     await run()
@@ -180,6 +210,34 @@ onMounted(load)
             <BaseButton v-if="deployed" variant="secondary" size="sm" :disabled="mutating" @click="action(() => petStore.withdraw(String(currentAccountId)), '宠物已召回')">
               <span class="i-carbon-pause mr-1" />召回
             </BaseButton>
+            <label
+              v-if="deployed"
+              class="inline-flex items-center gap-1.5 rounded-full border border-gray-200/60 bg-white/75 px-2 py-0.5 shadow-sm cursor-pointer select-none transition-all hover:bg-white dark:border-gray-700/60 dark:bg-gray-800/75 dark:hover:bg-gray-800"
+              title="背包无狗粮时，自动在商城购买狗粮礼包"
+            >
+              <span class="text-[11px] text-gray-500 dark:text-gray-400">自动买粮</span>
+              <input
+                type="checkbox"
+                :checked="overview.autoBuyFood"
+                :disabled="autoToggling"
+                class="relative h-3.5 w-6 appearance-none rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 focus:outline-none checked:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed after:absolute after:top-[2px] after:left-[2px] after:h-2.5 after:w-2.5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform after:duration-200 checked:after:translate-x-2.5"
+                @change="toggleAutoBuyFood(($event.target as HTMLInputElement).checked)"
+              />
+            </label>
+            <label
+              v-if="deployed"
+              class="inline-flex items-center gap-1.5 rounded-full border border-gray-200/60 bg-white/75 px-2 py-0.5 shadow-sm cursor-pointer select-none transition-all hover:bg-white dark:border-gray-700/60 dark:bg-gray-800/75 dark:hover:bg-gray-800"
+              title="守护剩余不足24小时且背包有狗粮时，自动喂食补充"
+            >
+              <span class="text-[11px] text-gray-500 dark:text-gray-400">自动喂食</span>
+              <input
+                type="checkbox"
+                :checked="overview.autoFeedDog"
+                :disabled="autoToggling"
+                class="relative h-3.5 w-6 appearance-none rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 focus:outline-none checked:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed after:absolute after:top-[2px] after:left-[2px] after:h-2.5 after:w-2.5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform after:duration-200 checked:after:translate-x-2.5"
+                @change="toggleAutoFeedDog(($event.target as HTMLInputElement).checked)"
+              />
+            </label>
           </div>
 
           <div class="flex shrink-0 items-center justify-between gap-3 px-3 pb-1 pt-3 sm:px-4">

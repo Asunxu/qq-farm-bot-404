@@ -244,9 +244,14 @@ async function checkFriends(options = {}) {
 
     const blacklist = new Set(getFriendBlacklist(accountId));
     const dogInfoCache = readFriendDogInfoCache(accountId);
-    const guardDogGidSet = dogInfoCache
-      ? new Set(Object.keys(dogInfoCache).map(Number))
-      : new Set();
+    const guardDogGidSet = new Set();
+    if (dogInfoCache && typeof dogInfoCache === 'object') {
+      for (const [gidStr, dog] of Object.entries(dogInfoCache)) {
+        if (dog && Number(dog.dogId) === 90021) {
+          guardDogGidSet.add(Number(gidStr));
+        }
+      }
+    }
     const expLimitEnabled = !!isAutomationOn('friend_help_exp_limit');
     const helpExpReached = expLimitEnabled && !getCanGetHelpExp();
 

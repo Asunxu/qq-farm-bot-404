@@ -4,6 +4,7 @@ const path = require('node:path');
 const { getDataFile, ensureDataDir } = require('../config/runtime-paths');
 const { readTextFile, readJsonFile, writeJsonFileAtomic } = require('../services/json-db');
 const { compareBagSeedGameOrder } = require('../utils/bag-seed-order');
+const { getItemImageById } = require('../config/gameConfig');
 
 // ==================== 文件路径 ====================
 
@@ -112,12 +113,13 @@ function updateFriendDogInfoCache(accountId, gid, dogInfo) {
     if (!accountId || !numericGid) return false;
     const cache = readFriendDogInfoCache(accountId) || {};
     const dogId = Number(dogInfo && dogInfo.dogId) || 0;
-    if (dogId === 90021) {
+    if (dogId > 0) {
+        const dogImage = dogInfo.dogImage || getItemImageById(dogId) || '';
         const current = cache[numericGid];
-        if (current && Number(current.dogId) === dogId && current.dogName === (dogInfo.dogName || '护主犬')) {
+        if (current && Number(current.dogId) === dogId && current.dogName === (dogInfo.dogName || '') && current.dogImage === dogImage) {
             return false;
         }
-        cache[numericGid] = { dogId, dogName: dogInfo.dogName || '护主犬' };
+        cache[numericGid] = { dogId, dogName: dogInfo.dogName || '', dogImage };
     } else if (Object.hasOwn(cache, numericGid)) {
         delete cache[numericGid];
     } else {
@@ -309,6 +311,8 @@ const DEFAULT_AUTOMATION = {
     fertilizer_gift: false,
     fertilizer_buy_organic: false,
     fertilizer_buy_normal: false,
+    auto_buy_dog_food: false,
+    auto_feed_dog: false,
     mall_coupon_gift_buy: false,
     mystery_shop_auto_buy: false,
     mystery_shop_allow_gold: true,

@@ -26,6 +26,7 @@ const {
     fertilize,
     removePlant
 } = require('../services/farm');
+const { startFertilizerBuyCheckTimer } = require('../services/farm-scheduler');
 const {
     checkFriends,
     runScheduledStealCheck,
@@ -1318,6 +1319,7 @@ function applyRuntimeConfig(config, syncStatusAfter = false) {
     if (loginReady) {
         refreshFarmCheckLoop(3000);
         refreshFriendCheckLoop(12000);
+        startFertilizerBuyCheckTimer();
         resetUnifiedSchedule();
         scheduleUnifiedNextTick();
 
