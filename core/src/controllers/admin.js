@@ -161,7 +161,19 @@ function configureCorsMiddleware(expressApp) {
 
 function configureStaticAssets(expressApp, webDist) {
   if (fs.existsSync(webDist)) {
-    expressApp.use(express.static(webDist));
+    expressApp.use(
+      express.static(webDist, {
+        setHeaders(res, filePath) {
+          // vite 构建产物文件名带 contenthash，可安全使用一年不可变强缓存
+          if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          } else {
+            // index.html 等入口文件用协商缓存，保证发新版立即生效
+            res.setHeader("Cache-Control", "no-cache");
+          }
+        },
+      }),
+    );
     return;
   }
   adminLogger.warn("web build not found", { webDist });
@@ -408,7 +420,15 @@ function startAdminServer(dataProvider) {
   const webDist = path.join(__dirname, "../../../web/dist");
   configureCorsMiddleware(app);
   configureStaticAssets(app, webDist);
-  app.use("/game-config", express.static(getResourcePath("gameConfig")));
+  app.use(
+    "/game-config",
+    express.static(getResourcePath("gameConfig"), {
+      setHeaders(res) {
+        // 子版本号机制兜底：素材变化时前端会主动刷新缓存，可放心使用长强缓存
+        res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+      },
+    }),
+  );
   const loginAssetsDir = getDataFile("login-assets");
   fs.mkdirSync(loginAssetsDir, { recursive: true });
   app.use(
@@ -417,6 +437,8 @@ function startAdminServer(dataProvider) {
       dotfiles: "deny",
       setHeaders(res, filePath) {
         res.setHeader("X-Content-Type-Options", "nosniff");
+        // 登录素材为运行时生成（二维码等），仅协商缓存避免拿到旧图
+        res.setHeader("Cache-Control", "no-cache");
         if (path.extname(filePath).toLowerCase() === ".svg") {
           res.setHeader(
             "Content-Security-Policy",

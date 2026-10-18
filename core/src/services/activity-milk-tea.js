@@ -39,6 +39,9 @@ function createMilkTeaService({ types, sendMsgAsync, getBag, getBagItems, getSer
   const list = value => Array.isArray(value) ? value : [];
   const plain = (type, value) => type.toObject(value, { longs: String, defaults: true });
   let pendingRead;
+  let lastRead = null;
+  let lastReadAt = 0;
+  const READ_CACHE_TTL_MS = 20 * 1000;
   async function rpc(method, requestType, replyType, input) {
     const { body } = await sendMsgAsync('gamepb.activitypb.ActivityService', method, Buffer.from(requestType.encode(requestType.fromObject(input)).finish()));
     return normalizeWireMaps(plain(replyType, replyType.decode(body)));
@@ -101,10 +104,23 @@ function createMilkTeaService({ types, sendMsgAsync, getBag, getBagItems, getSer
     const fundView = fund ? { ...fund, unlock_cost: list(fund.unlock_cost).map(itemDto), tiers: list(fund.tiers).map(tier => ({ ...tier, reward: list(tier.reward).map(itemDto) })) } : null;
     return { ...state, share: shareView, fund: fundView, shop: shop.shop, recipes, work, goods, balances: ['1001', '1004', '1041', '1042'].map(id => itemDto({ id, count: inventory.filter(x => String(x.id) === id).reduce((n, x) => n + BigInt(String(x.count || 0)), 0n).toString() })), levels, durations: catalog.MilkTeaHireDurationConfig, interactions: catalog.MilkTeaInteractionType };
   }
-  function getMilkTea() { if (!pendingRead) pendingRead = read().finally(() => { pendingRead = null; }); return pendingRead; }
+  // 读取活动状态：20 秒内复用上次结果（页面切换秒开），超时或 force 才真正请求官方。
+  // 读取失败不缓存，下次立即重试。
+  function getMilkTea(force = false) {
+    const now = Date.now();
+    if (!force && lastRead && now - lastReadAt < READ_CACHE_TTL_MS) return lastRead;
+    if (pendingRead) return pendingRead;
+    lastReadAt = now;
+    pendingRead = read()
+      .then((result) => { lastRead = Promise.resolve(result); return result; })
+      .catch((err) => { lastReadAt = 0; lastRead = null; throw err; })
+      .finally(() => { pendingRead = null; });
+    lastRead = pendingRead;
+    return pendingRead;
+  }
   async function mutate(action, input = {}) {
     if (!ACTIONS[action] && !['buy', 'shareDaily', 'shareRewards', 'fundRewards'].includes(action)) fail('活动操作无效');
-    const state = await getMilkTea(); const inventory = await bag(); const now = getServerTimeSec();
+    const state = await getMilkTea(true); const inventory = await bag(); const now = getServerTimeSec();
     state.phase = phase(now, state);
     if (!['business', 'settling'].includes(state.phase)) fail('活动未开始或已结束');
     if (state.phase !== 'business' && !['cashier', 'wages', 'buy', 'shareDaily', 'shareRewards', 'fundRewards'].includes(action)) fail('结算期不支持此操作');
@@ -168,7 +184,7 @@ function createMilkTeaService({ types, sendMsgAsync, getBag, getBagItems, getSer
       const result = await op(action, params);
       if (action === 'hire' && (!result.results?.length || result.results.some(entry => !entry.success))) fail('雇佣失败，请刷新员工列表后重试');
     }
-    pendingRead = null; return { ok: true, detail, activity: await getMilkTea() };
+    lastRead = null; lastReadAt = 0; return { ok: true, detail, activity: await getMilkTea(true) };
   }
   const skippedLogs = new Map();
   const operateMilkTea = (action, params) => serializeMutation(async () => {
