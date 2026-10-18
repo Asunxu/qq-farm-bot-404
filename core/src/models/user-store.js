@@ -989,12 +989,6 @@ function clearExpiredClaimRecords() {
     return { cleared: before - cardClaimRecords.length };
 }
 
-// ==================== 超级管理员 ====================
-
-function isSuperAdmin(username) {
-    return username === SUPER_ADMIN_USERNAME;
-}
-
 // ==================== 清理 ====================
 
 function clearExpiredUsers() {
@@ -1166,7 +1160,6 @@ module.exports = {
     claimCardByUA,
     getCardClaimRecords,
     clearExpiredClaimRecords,
-    isSuperAdmin,
     clearAllData,
     clearExpiredUsers,
     getUserCount,

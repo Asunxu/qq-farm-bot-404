@@ -2,7 +2,6 @@ function registerAdminUserRoutes({
   app,
   requireAdminToken,
   requireAdminRole,
-  requireSuperAdminRole,
   requireDangerConfirmation,
   getAdminUserMutationError,
   userStore,
@@ -17,19 +16,6 @@ function registerAdminUserRoutes({
       res.status(500).json({ ok: false, error: error.message });
     }
   });
-
-  app.get(
-    "/api/admin/users-with-password",
-    requireAdminToken,
-    requireSuperAdminRole,
-    (req, res) => {
-      try {
-        res.json({ ok: true, data: userStore.getAllUsersWithPassword() });
-      } catch (error) {
-        res.status(500).json({ ok: false, error: error.message });
-      }
-    },
-  );
 
   app.post(
     "/api/admin/users/clear-expired",
