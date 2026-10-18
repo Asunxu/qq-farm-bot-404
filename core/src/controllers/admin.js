@@ -582,7 +582,8 @@ function startAdminServer(dataProvider) {
     getRuntimeConfig,
     updateRuntimeConfig,
   });
-  adminLogger.info("抓包服务默认关闭，未随管理面板启动运行");
+  // 面板启动时按配置自动运行抓包服务（enabled=true 时嵌入本进程，默认开启）
+  startEmbeddedCaptureService();
   registerAdminCaptureRoutes({
     app,
     store,
