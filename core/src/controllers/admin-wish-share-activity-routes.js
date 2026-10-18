@@ -6,7 +6,26 @@ function registerAdminWishShareActivityRoutes({ app, provider, getAccountIdFromR
     if (!accountId) return;
     try {
       if (!requireConnectedAccount(res, provider, accountId, '账号未运行')) return;
-      res.json({ ok: true, solarTerms: await provider.getSolarTermsInfo(accountId) });
+      let solarTerms;
+      if (typeof provider.getSolarTermsV2Info !== 'function') solarTerms = await provider.getSolarTermsInfo(accountId);
+      else {
+        try { solarTerms = await provider.getSolarTermsV2Info(accountId); }
+        catch (error) {
+          solarTerms = { ...await provider.getSolarTermsInfo(accountId), warning: `新版答题状态读取失败：${error.message}` };
+        }
+      }
+      res.json({ ok: true, solarTerms });
+    } catch (error) { sendProviderError(res, error); }
+  });
+  app.post('/api/activity/solar-terms/answer', async (req, res) => {
+    const accountId = getAuthorizedAccountId(req, res, { getAccountIdFromRequest, canAccessAccount });
+    if (!accountId) return;
+    try {
+      if (!requireConnectedAccount(res, provider, accountId, '账号未运行')) return;
+      const termId = Number(req.body?.termId) || 0;
+      const optionIndex = Number(req.body?.optionIndex);
+      if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 3) return res.status(400).json({ ok: false, error: '选项无效' });
+      res.json(await provider.answerSolarTerm(accountId, termId, optionIndex));
     } catch (error) { sendProviderError(res, error); }
   });
   app.post('/api/activity/solar-terms/claim', async (req, res) => {

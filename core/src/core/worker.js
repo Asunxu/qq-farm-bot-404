@@ -491,6 +491,7 @@ async function runStarActivityAutoClaims() {
     const milkTeaEnabled = Object.keys(require('../services/activity-milk-tea').AUTO_ACTIONS).some(key => automation[key] === true);
     const claimPassport = automation.star_passport_claim === true;
     const claimSolarTerms = automation.star_solar_claim === true;
+    const claimSolarQuiz = automation.star_solar_quiz_claim === true;
     const claimRecords = automation.star_record_claim === true;
     const claimQingmeiSeedsEnabled = automation.qingmei_seed_claim === true;
     const brewQingmeiWineEnabled = automation.qingmei_wine_brew === true;
@@ -528,7 +529,7 @@ async function runStarActivityAutoClaims() {
         || petDiaryTreasureEnabled || petDiaryCompensationEnabled || petDiaryCharmEnabled || petDiaryBattleFlag;
     const qixiFriendPriority = Array.isArray(automation.qixi_friend_priority)
         ? automation.qixi_friend_priority.map(Number).filter(gid => gid > 0) : [];
-    if (!milkTeaEnabled && !claimPassport && !claimSolarTerms && !claimRecords && !claimQingmeiSeedsEnabled && !brewQingmeiWineEnabled
+    if (!milkTeaEnabled && !claimPassport && !claimSolarTerms && !claimSolarQuiz && !claimRecords && !claimQingmeiSeedsEnabled && !brewQingmeiWineEnabled
         && !useQixiDewEnabled && !buildQixiBridgeEnabled && !giftQixiSachetEnabled
         && !buyRainPoemBottleEnabled && !collectRainPoemWeatherEnabled && !useRainPoemSummonEnabled && !useRainPoemPrankEnabled
         && !unlockRainPoemResearchEnabled && !claimCharityShareEnabled && !donateCharityLoveEnabled
@@ -542,6 +543,7 @@ async function runStarActivityAutoClaims() {
             getSolarTermsInfo,
             claimSeasonPassportRewards,
             claimSolarTermsReward,
+            autoClaimSolarTermsQuiz,
             claimStarRecordRewards,
             claimQingmeiSeeds,
             brewAndSellQingmeiWine
@@ -591,6 +593,19 @@ async function runStarActivityAutoClaims() {
                     });
                 }
             }
+        }
+
+        if (claimSolarQuiz) {
+            await autoClaimSolarTermsQuiz({
+                enabled: () => loginReady && !friendSyncPaused && getAutomation().star_solar_quiz_claim === true,
+                onResult: (result, term) => log('活动', `${result.correct ? '自动领取节令答题附加奖励完成' : '节令答题未答对'}：${term.title}`, {
+                    module: 'activity', event: '节令答题自动领取', result: result.correct ? 'success' : 'error', termId: term.id,
+                    warning: result.solarTerms?.warning || '',
+                }),
+                onError: (error, term) => log('活动', `节令答题自动领取失败：${error.message}`, {
+                    module: 'activity', event: '节令答题自动领取', result: 'error', termId: term?.id,
+                }),
+            });
         }
 
         if (claimRecords && Number(activity?.starRecord?.claimableCount || 0) > 0) {
@@ -2065,6 +2080,7 @@ async function handleApiCall(msg) {
                 break;
             }
             case 'getSolarTermsInfo':
+            case 'getSolarTermsV2Info':
             case 'getMilkTea':
             case 'getWishSignActivity':
             case 'getShareRewardActivity': {
@@ -2072,6 +2088,7 @@ async function handleApiCall(msg) {
                 result = await activity[method]();
                 break;
             }
+            case 'answerSolarTerm':
             case 'operateMilkTea':
             case 'milkTeaRecords':
             case 'operateWishSign':

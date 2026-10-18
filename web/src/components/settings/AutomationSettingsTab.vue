@@ -5,6 +5,7 @@ import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseSwitch from '@/components/ui/BaseSwitch.vue'
 import { CHARITY_FLOWER_ACTIVITY_WINDOW, isWithinActivityWindowMs, MILK_TEA_ACTIVITY_WINDOW, RAIN_POEM_ACTIVITY_WINDOW } from '@/constants/activity-windows'
+import { isSolarQuizActive } from '@/constants/solar-terms'
 
 interface AutomationSettings {
   automation: {
@@ -22,6 +23,7 @@ interface AutomationSettings {
     friend_help_exp_limit: boolean
     star_passport_claim: boolean
     star_solar_claim: boolean
+    star_solar_quiz_claim: boolean
     star_record_claim: boolean
     qingmei_seed_claim: boolean
     qingmei_wine_brew: boolean
@@ -106,6 +108,7 @@ const nowMs = ref(Date.now())
 let nowTimer: ReturnType<typeof window.setInterval> | null = null
 const showRainPoemActivity = computed(() => isWithinActivityWindowMs(RAIN_POEM_ACTIVITY_WINDOW, nowMs.value))
 const showCharityFlowerActivity = computed(() => isWithinActivityWindowMs(CHARITY_FLOWER_ACTIVITY_WINDOW, nowMs.value))
+const showSolarQuiz = computed(() => isSolarQuizActive(nowMs.value))
 const qixiFriends = ref<Array<{ gid: number, name: string, level?: number }>>([])
 function qixiPriority() {
   return Array.isArray(settings.value.automation.qixi_friend_priority)
@@ -297,6 +300,9 @@ watch(() => props.currentAccountId, loadQixiFriends)
           </div>
           <div class="border border-gray-200 rounded-lg bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
             <BaseSwitch v-model="settings.automation.star_solar_claim" label="自动领取节令小札" />
+          </div>
+          <div v-if="showSolarQuiz" class="border border-gray-200 rounded-lg bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
+            <BaseSwitch v-model="settings.automation.star_solar_quiz_claim" label="自动领取答题附加奖励" />
           </div>
           <div v-if="SHOW_STAR_ACTIVITY" class="border border-gray-200 rounded-lg bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
             <BaseSwitch v-model="settings.automation.star_record_claim" label="自动领取观星礼录" />

@@ -45,6 +45,7 @@ async function claim(term: { id: number }) {
     if (version !== generation) return
     if (!data.ok) throw new Error(data.error || '领取失败')
     solar.value = data.solarTerms
+    if (data.refreshWarning && solar.value) solar.value.warning = data.refreshWarning
     toast.success('节令奖励领取完成')
   }
   catch (e: any) { if (version === generation) toast.error(e.response?.data?.error || e.message) }
@@ -52,6 +53,33 @@ async function claim(term: { id: number }) {
     busy.value = false
     if (version !== generation && currentAccountId.value) refresh()
   }
+}
+async function answer(payload: { id: number, optionIndex: number }) {
+  if (disposed || busy.value || !currentAccountId.value) return
+  const version = generation
+  busy.value = true
+  try {
+    const { data } = await api.post('/api/activity/solar-terms/answer', {
+      termId: payload.id,
+      optionIndex: payload.optionIndex,
+    })
+    if (version !== generation) return
+    if (!data.ok) throw new Error(data.error || '答题失败')
+    solar.value = data.solarTerms
+    toast[data.correct ? 'success' : 'error'](data.correct ? '答题正确，奖励已发放' : '答案错误，明天再来')
+  }
+  catch (e: any) { if (version === generation) toast.error(e.response?.data?.error || e.message) }
+  finally {
+    busy.value = false
+    if (version !== generation && currentAccountId.value) refresh()
+  }
+}
+function poll() {
+  if (document.visibilityState !== 'visible') return
+  const now = Math.floor(Date.now() / 1000)
+  if (solar.value
+    && !solar.value.terms.some(term => term.startTime <= now && now <= term.endTime)) return
+  refresh()
 }
 function visibility() { if (document.visibilityState === 'visible') refresh() }
 watch(currentAccountId, async () => {
@@ -63,7 +91,7 @@ watch(currentAccountId, async () => {
 })
 onMounted(() => {
   refresh()
-  timer = setInterval(() => { if (document.visibilityState === 'visible') refresh() }, 30_000)
+  timer = setInterval(poll, 30_000)
   document.addEventListener('visibilitychange', visibility)
 })
 onUnmounted(() => {
@@ -84,6 +112,6 @@ onUnmounted(() => {
     <p v-if="!currentAccountId">请先选择账号</p>
     <p v-else-if="error" role="alert">{{ error }}</p>
     <p v-else-if="!solar">{{ busy ? '正在读取节令…' : '暂无节令数据' }}</p>
-    <HeluSolarTermsPanel v-else :solar-terms="solar" :loading="busy" :labels="labels" @claim="claim" />
+    <HeluSolarTermsPanel v-else :solar-terms="solar" :loading="busy" :labels="labels" @claim="claim" @answer="answer" />
   </section>
 </template>

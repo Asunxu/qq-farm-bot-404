@@ -2,6 +2,7 @@
 import type { ActivityLabels } from './types'
 import type { HeluDrawReward, HeluSolarTerm, HeluSolarTerms } from '@/stores/activity'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import { ref } from 'vue'
 
 defineProps<{
   solarTerms?: HeluSolarTerms | null
@@ -11,6 +12,7 @@ defineProps<{
 
 defineEmits<{
   claim: [term: HeluSolarTerm]
+  answer: [payload: { id: number, optionIndex: number }]
 }>()
 
 const T = {
@@ -52,6 +54,15 @@ function rewardSummary(items?: HeluDrawReward[]) {
 function previewRewards(items?: HeluDrawReward[]) {
   return (items || []).slice(0, 3)
 }
+
+const selected = ref<Record<number, number>>({})
+function choose(termId: number, index: number) {
+  selected.value = { ...selected.value, [termId]: index }
+}
+function selectedOption(termId: number) {
+  return selected.value[termId]
+}
+
 </script>
 
 <template>
@@ -137,6 +148,58 @@ function previewRewards(items?: HeluDrawReward[]) {
 
           <div class="line-clamp-2 mt-2 text-[11px] text-gray-500 leading-5 dark:text-gray-400">
             {{ T.reward }}: {{ rewardSummary(term.rewards) }}
+          </div>
+
+          <div v-if="term.answerAvailable" class="mt-3 border-t border-dashed border-gray-100 pt-3 dark:border-gray-700">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-gray-900 font-semibold dark:text-gray-100">节令答题</span>
+              <span
+                class="rounded px-1.5 py-0.5 text-[10px]"
+                :class="term.answerable ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'"
+              >{{ term.answerStatus }}</span>
+            </div>
+            <div v-if="term.questionRewards?.length" class="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+              答对奖励: {{ rewardSummary(term.questionRewards) }}
+            </div>
+            <p class="mt-2 text-xs text-gray-800 leading-5 dark:text-gray-200">{{ term.question }}</p>
+            <div class="mt-1.5 grid gap-1.5">
+              <label
+                v-for="(option, index) in term.options"
+                :key="`${term.id}-option-${index}`"
+                class="flex cursor-pointer items-start gap-2 rounded-md border px-2.5 py-1.5 text-xs leading-5"
+                :class="[
+                  selectedOption(term.id) === index
+                    ? 'border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-200'
+                    : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300',
+                  term.wrongOptions?.includes(index) ? 'border-red-200 bg-red-50 text-red-700 opacity-70 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300' : '',
+                  term.correctOptionIndex === index && !term.answerable ? 'border-emerald-500' : '',
+                ]"
+              >
+                <input
+                  type="radio"
+                  :name="`solar-${term.id}`"
+                  :value="index"
+                  :checked="selectedOption(term.id) === index"
+                  :disabled="loading || !term.answerable || term.wrongOptions?.includes(index)"
+                  class="mt-1 accent-emerald-600"
+                  @change="choose(term.id, index)"
+                >
+                <span class="min-w-0 flex-1 break-all">{{ option }}</span>
+                <span v-if="term.wrongOptions?.includes(index)" class="shrink-0 text-[10px] text-red-500">已判定错误</span>
+                <span v-else-if="term.correctOptionIndex === index && !term.answerable" class="shrink-0 text-[10px] text-emerald-600">正确答案</span>
+              </label>
+            </div>
+            <p v-if="term.explanation" class="mt-1.5 text-[11px] text-gray-500 leading-5 dark:text-gray-400">{{ term.explanation }}</p>
+            <BaseButton
+              v-if="term.answerable"
+              class="mt-2 w-full"
+              variant="primary"
+              :loading="loading"
+              :disabled="loading || selectedOption(term.id) === undefined || term.wrongOptions?.includes(selectedOption(term.id) as number)"
+              @click="$emit('answer', { id: term.id, optionIndex: selectedOption(term.id) as number })"
+            >
+              答题领奖
+            </BaseButton>
           </div>
 
           <div v-if="!term.claimable" class="mt-auto rounded-lg bg-gray-100 px-3 py-2 text-center text-sm text-gray-500 dark:bg-gray-800 dark:text-gray-400">

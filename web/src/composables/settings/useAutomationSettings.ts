@@ -23,6 +23,7 @@ const defaultAutomation = {
   friend_help_exp_limit: false,
   star_passport_claim: false,
   star_solar_claim: false,
+  star_solar_quiz_claim: false,
   star_record_claim: false,
   qingmei_seed_claim: false,
   qingmei_wine_brew: false,

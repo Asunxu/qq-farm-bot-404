@@ -3356,6 +3356,26 @@ module.exports.getMilkTea = () => getMilkTeaService().getMilkTea();
 module.exports.operateMilkTea = (action, params) => getMilkTeaService().operateMilkTea(action, params);
 module.exports.milkTeaRecords = (kind, params) => getMilkTeaService().milkTeaRecords(kind, params);
 
+let solarTermsV2Service;
+function getSolarTermsV2Service() {
+  if (!solarTermsV2Service) solarTermsV2Service = require('./activity-solar-terms').createSolarTermsService({
+    types,
+    send: sendMsgAsync,
+    assertConnected: assertActivityConnection,
+    now: () => require('../utils/utils').getServerTimeSec(),
+    mapItem: item => {
+      const itemId = toNum(item?.id);
+      const count = Math.max(0, toNum(item?.count));
+      const info = getItemById(itemId) || {};
+      return { itemId, itemCount: count, count, itemName: info.name || `物品${itemId}`, name: info.name || `物品${itemId}`, image: getItemImageById(itemId) || '' };
+    },
+  });
+  return solarTermsV2Service;
+}
+module.exports.getSolarTermsV2Info = () => getSolarTermsV2Service().getInfo();
+module.exports.answerSolarTerm = (termId, optionIndex, canProceed) => getSolarTermsV2Service().answer(termId, optionIndex, canProceed);
+module.exports.autoClaimSolarTermsQuiz = hooks => getSolarTermsV2Service().autoClaim(hooks);
+
 // These actions previously emitted only wire request logs, with no account-visible outcome.
 const { withActivityOperationLog } = require('./activity-operation-log');
 for (const [method, label] of Object.entries({

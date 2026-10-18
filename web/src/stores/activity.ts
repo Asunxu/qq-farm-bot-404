@@ -212,6 +212,19 @@ export interface HeluSolarTerm {
   startTime: number
   endTime: number
   rewards: HeluDrawReward[]
+  // v2 答题字段
+  directClaimed?: boolean
+  quizClaimed?: boolean
+  quizWrongToday?: boolean
+  wrongOptions?: number[]
+  questionRewards?: HeluDrawReward[]
+  question?: string
+  options?: string[]
+  correctOptionIndex?: number | null
+  explanation?: string
+  answerAvailable?: boolean
+  answerable?: boolean
+  answerStatus?: string
 }
 
 export interface HeluSolarTerms {

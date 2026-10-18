@@ -8,6 +8,7 @@ import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseSwitch from '@/components/ui/BaseSwitch.vue'
 import { CHARITY_FLOWER_ACTIVITY_WINDOW, isWithinActivityWindowMs, MILK_TEA_ACTIVITY_WINDOW, MILK_TEA_BUSINESS_WINDOW, PET_DIARY_ACTIVITY_WINDOW, RAIN_POEM_ACTIVITY_WINDOW, SHARE_REWARD_ACTIVITY_WINDOW, WISH_SIGN_ACTIVITY_WINDOW } from '@/constants/activity-windows'
+import { isSolarQuizActive } from '@/constants/solar-terms'
 
 type ModuleKey = 'planting' | 'fertilizer' | 'friends' | 'steal' | 'merchant' | 'activity'
 
@@ -63,6 +64,7 @@ const showCharityFlowerActivity = computed(() => isWithinActivityWindowMs(CHARIT
 const showPetDiaryActivity = computed(() => isWithinActivityWindowMs(PET_DIARY_ACTIVITY_WINDOW, nowMs.value))
 const showWishSignActivity = computed(() => isWithinActivityWindowMs(WISH_SIGN_ACTIVITY_WINDOW, nowMs.value))
 const showShareRewardActivity = computed(() => isWithinActivityWindowMs(SHARE_REWARD_ACTIVITY_WINDOW, nowMs.value))
+const showSolarQuiz = computed(() => isSolarQuizActive(nowMs.value))
 
 const moduleInfo: Record<ModuleKey, { title: string, description: string, icon: string, image: string, tone: string }> = {
   planting: { title: '种植与收获', description: '选种、收获、出售和巡田节奏', icon: 'i-carbon-sprout', image: '/game-config/module_icons/planting.png', tone: 'emerald' },
@@ -79,6 +81,7 @@ const selectedLandNames = computed(() => props.fertilizerLandTypeOptions.filter(
 const selectedLandTypeCount = computed(() => Array.isArray(automation.value.automation.fertilizer_land_types) ? automation.value.automation.fertilizer_land_types.length : 0)
 const activityKeys = computed(() => [
   'star_solar_claim',
+  ...(showSolarQuiz.value ? ['star_solar_quiz_claim'] : []),
   ...(showMilkTeaActivity.value ? ['mall_coupon_gift_buy', 'milk_tea_cashier', 'milk_tea_wages', 'milk_tea_share_daily', 'milk_tea_share_rewards', 'milk_tea_fund_rewards'] : []),
   ...(showMilkTeaBusiness.value ? ['milk_tea_upgrade', 'milk_tea_craft', 'milk_tea_boost', 'milk_tea_hire', 'milk_tea_work_interact', 'milk_tea_seed_buy'] : []),
   ...(showRainPoemActivity.value
@@ -163,7 +166,7 @@ function summaryTags(key: ModuleKey) {
   }
   return [
     automation.value.automation.task ? '自动完成日常任务' : '不做日常',
-    automation.value.automation.star_solar_claim && '节令小札',
+    (automation.value.automation.star_solar_claim || (showSolarQuiz.value && automation.value.automation.star_solar_quiz_claim)) && '节令小札',
     SHOW_STAR_ACTIVITY && starFestivalEnabled.value && '心许千灯星垂野',
     SHOW_QIXI_ACTIVITY && qixiActivityEnabled.value && '鹊桥寄情',
     showRainPoemActivity.value && rainPoemActivityEnabled.value && '雨落成诗',
@@ -609,7 +612,10 @@ watch(() => props.currentAccountId, loadQixiFriends)
 
               <section class="border border-gray-100 rounded-lg p-4 space-y-3 dark:border-gray-700">
                 <h3 class="text-sm font-medium">节令小札</h3>
-                <BaseSwitch v-model="automation.automation.star_solar_claim" label="自动领取节令奖励" />
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <BaseSwitch v-model="automation.automation.star_solar_claim" label="自动领取节令奖励" />
+                  <BaseSwitch v-if="showSolarQuiz" v-model="automation.automation.star_solar_quiz_claim" label="自动领取答题附加奖励" />
+                </div>
               </section>
 
               <section v-if="SHOW_STAR_ACTIVITY" class="border border-gray-100 rounded-lg p-4 space-y-3 dark:border-gray-700">
