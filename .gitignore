@@ -29,6 +29,3 @@ temp/
 
 # 配置合并脚本产生的备份
 *.bak
-
-# 部署打包产物
-deploy-package/
