@@ -85,6 +85,36 @@ Get-ChildItem $base -Directory -Filter '1112386029_3_*' | ForEach-Object {
 macOS 相同（第 2 节起），把 `cp` 换成 `Copy-Item`、`shasum` 换成
 `Get-FileHash -Algorithm SHA256` 即可。
 
+## 1.2 微信小游戏 tsdk.wasm 位置
+
+微信小游戏农场的 `tsdk.wasm` 位于微信小程序包目录内：
+
+```text
+%APPDATA%\Tencent\xwechat\radium\users\<用户哈希>\applet\packages\wx5306c5978fdb76e4\<版本号>\__APP__\tsdk\tsdk.wasm
+```
+
+以当前环境为例：
+
+```text
+C:\Users\<用户名>\AppData\Roaming\Tencent\xwechat\radium\users\80aa71ca5fc111690786cc7252c70c27\applet\packages\wx5306c5978fdb76e4\76\__APP__\tsdk\tsdk.wasm
+```
+
+同目录还有 `acesdk.wasm.br`（反作弊模块，brotli 压缩）。微信农场 AppID 为
+`wx5306c5978fdb76e4`，`tsdk.wasm` 大小约 161 KB。
+
+在 PowerShell 中定位并校验：
+
+```powershell
+$wxRoot = "$env:APPDATA\Tencent\xwechat\radium\users"
+Get-ChildItem $wxRoot -Recurse -Filter 'tsdk.wasm' -ErrorAction SilentlyContinue |
+  Where-Object { $_.FullName -like '*wx5306c5978fdb76e4*' } |
+  ForEach-Object {
+    [PSCustomObject]@{ Path = $_.FullName; Size = $_.Length; Sha256 = (Get-FileHash $_.FullName -Algorithm SHA256).Hash }
+  }
+```
+
+拿到 `tsdk.wasm` 后，后续快照、检查和回退流程与 QQ 相同（第 2 节起）。
+
 ## 2. 固化源文件
 
 先在仓库外或临时目录创建快照，避免 QQ 自动更新导致分析过程中两个文件版本不一致：

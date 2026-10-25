@@ -36,3 +36,6 @@ __pycache__/
 
 # Trae 临时分享包
 .trae-html-share-packages/
+
+# 微信小程序 wxapkg 解密工具（本地副本，不提交）
+tools/wxapkg-decrypt/
