@@ -12,6 +12,7 @@ test('extracts code and client version from the official gateway URL', () => {
   ), {
     code: 'ac0af478f19a045c6b03809dd0f6f0c7',
     clientVersion: '1.13.2.9_20260723',
+    wechat: false,
   });
 });
 

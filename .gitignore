@@ -29,3 +29,10 @@ temp/
 
 # 配置合并脚本产生的备份
 *.bak
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# Trae 临时分享包
+.trae-html-share-packages/

@@ -74,10 +74,18 @@ const localCaptureConfig = defineModel<CaptureConfig>('localCaptureConfig', { re
           </div>
           <div class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:bg-gray-900/40 dark:text-gray-200">
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              默认版本
+              默认 QQ 版本
             </div>
             <div class="mt-1 font-semibold">
               {{ defaultSystemConfig.clientVersion }}
+            </div>
+          </div>
+          <div class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:bg-gray-900/40 dark:text-gray-200">
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              默认微信版本
+            </div>
+            <div class="mt-1 font-semibold">
+              {{ defaultSystemConfig.wxClientVersion }}
             </div>
           </div>
         </div>
@@ -100,10 +108,15 @@ const localCaptureConfig = defineModel<CaptureConfig>('localCaptureConfig', { re
           />
           <BaseInput
             v-model="localSystemConfig.clientVersion"
-            label="客户端版本"
+            label="QQ 客户端版本"
             type="text"
-            placeholder="1.13.0.5_20260723"
-            class="col-span-2"
+            placeholder="1.15.0.2_20261001"
+          />
+          <BaseInput
+            v-model="localSystemConfig.wxClientVersion"
+            label="微信客户端版本"
+            type="text"
+            placeholder="1.15.0.2_20261001"
           />
           <div class="flex flex-col gap-1.5">
             <label class="text-sm text-gray-700 font-medium dark:text-gray-300">平台</label>

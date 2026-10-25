@@ -27,6 +27,8 @@ async function loadProto() {
     await root.load([
         getResourcePath('proto', 'game.proto'),
         getResourcePath('proto', 'userpb.proto'),
+        getResourcePath('proto', 'player-login.proto'),
+        getResourcePath('proto', 'globalscenepb.proto'),
         getResourcePath('proto', 'plantpb.proto'),
         getResourcePath('proto', 'corepb.proto'),
         getResourcePath('proto', 'shoppb.proto'),
@@ -72,6 +74,10 @@ async function loadProto() {
     // 用户
     types.LoginRequest = root.lookupType('gamepb.userpb.LoginRequest');
     types.LoginReply = root.lookupType('gamepb.userpb.LoginReply');
+    types.PlayerLoginRequest = root.lookupType('gamepb.userpb.PlayerLoginRequest');
+    types.PlayerLoginReply = root.lookupType('gamepb.userpb.PlayerLoginReply');
+    types.PlayerSceneLoginRequest = root.lookupType('gamepb.globalscenepb.PlayerSceneLoginRequest');
+    types.PlayerSceneLoginReply = root.lookupType('gamepb.globalscenepb.PlayerSceneLoginReply');
     types.HeartbeatRequest = root.lookupType('gamepb.userpb.HeartbeatRequest');
     types.HeartbeatReply = root.lookupType('gamepb.userpb.HeartbeatReply');
     types.ReportArkClickRequest = root.lookupType('gamepb.userpb.ReportArkClickRequest');
