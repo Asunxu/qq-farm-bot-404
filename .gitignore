@@ -39,3 +39,6 @@ __pycache__/
 
 # 微信小程序 wxapkg 解密工具（本地副本，不提交）
 tools/wxapkg-decrypt/
+
+# 本地开发记忆（不提交）
+DEV-MEMORY.md
