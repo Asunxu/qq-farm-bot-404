@@ -48,6 +48,43 @@ tsdk/tsdk.wasm
 若没有展开目录，再考虑从对应 `.tqapkg` 复制后解包；不要默认使用微信
 `.wxapkg` 工具。Mac QQ 正常运行时通常已经生成 `miniapp_src`，无需二次解包。
 
+## 1.1 在 Windows 定位官方展开目录
+
+Windows 版 QQ NT 的小程序展开目录位于：
+
+```text
+%APPDATA%\QQEX\miniapp\temps\miniapp_src\1112386029_3_<hash>\
+```
+
+以当前环境为例：
+
+```text
+C:\Users\<用户名>\AppData\Roaming\QQEX\miniapp\temps\miniapp_src\1112386029_3_c68e1129c7348c5696b0086bdb79caf7\
+```
+
+资源缓存（`gamecaches`）按账号区分：
+
+```text
+%APPDATA%\QQEX\miniapp\fs\<QQ账号>\1112386029\usr\gamecaches\
+```
+
+在 PowerShell 中列出所有候选版本及 `tsdk.wasm` 信息：
+
+```powershell
+$base = "$env:APPDATA\QQEX\miniapp\temps\miniapp_src"
+Get-ChildItem $base -Directory -Filter '1112386029_3_*' | ForEach-Object {
+  $w = Join-Path $_.FullName 'tsdk\tsdk.wasm'
+  if (Test-Path $w) {
+    $f = Get-Item $w
+    [PSCustomObject]@{ Dir = $_.Name; Size = $f.Length; LastWrite = $f.LastWriteTime; Sha256 = (Get-FileHash $w -Algorithm SHA256).Hash }
+  }
+} | Sort-Object LastWrite -Descending | Format-Table -AutoSize
+```
+
+候选目录至少应包含 `game.js` 和 `tsdk/tsdk.wasm`。后续快照、检查和回退流程与
+macOS 相同（第 2 节起），把 `cp` 换成 `Copy-Item`、`shasum` 换成
+`Get-FileHash -Algorithm SHA256` 即可。
+
 ## 2. 固化源文件
 
 先在仓库外或临时目录创建快照，避免 QQ 自动更新导致分析过程中两个文件版本不一致：

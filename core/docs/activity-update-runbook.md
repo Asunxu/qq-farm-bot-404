@@ -79,6 +79,46 @@ QQ 农场的网关请求正文经过当前会话 TSDK 加密，HAR 请求正文�
 
 项目发送时会统一执行 protobuf 编码和 TSDK 加密。业务代码不得复制 HAR 密文字节。
 
+## 2.1 通过 Reqable MCP 直接分析（无需手动导出 HAR）
+
+如果本机已配置 Reqable MCP（`mcp_reqable`），可以跳过手动导出 HAR，直接通过 MCP
+读取实时抓包记录并交给项目协议工具分析。
+
+### 流程
+
+1. 启用抓包并在 QQ 农场中完成目标操作。
+2. 过滤农场网关记录，拿到记录 ID：
+
+   ```text
+   capture_live_filter(filters=[{type:"host", hosts:["gate-obt.nqf.qq.com"]}])
+   ```
+
+3. 取完整记录，`messages[].payload.buffer` 是 base64 编码的 WebSocket 帧原始字节：
+
+   ```text
+   capture_live_get_by_id(id)
+   ```
+
+4. 把每条 `payload.buffer` 解码为字节，按序号命名写入临时目录（如
+   `000000.bin`、`000001.bin` …），帧方向由 protobuf 内的 `message_type`
+   字段决定，不需要额外保存 flow 信息。
+5. 用项目工具分析该 `.bin` 目录：
+
+   ```bash
+   npm run inspect:protocol -- "<临时bin目录>" --service ActivityService --pretty
+   ```
+
+   也可加 `--method`、`--direction`、`--shape`、`--audit`、`--decrypt-requests`
+   等选项，用法与 HAR 输入完全一致。
+
+### 注意事项
+
+- MCP 省去了 HAR 转换步骤。
+- 请求体仍是 TSDK 会话加密，`--decrypt-requests` 对官方 QQ 客户端流量无法解密，
+  只能得到 `bodySha256`；请求体语义仍需按 2 节末尾的交叉证据确认。
+- 不要把 MCP 原始输出（含登录 `code`、网关 Token）提交到 Git；只保存脱敏后的
+  分析结果或具名活动常量。
+
 ## 3. 建立活动协议表
 
 记录主活动和每个子活动：
