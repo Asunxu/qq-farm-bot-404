@@ -23,10 +23,11 @@ function withSessionVersion(version, run) {
 test.before(async () => loadProto());
 
 test('default client protocol is upgraded without replacing custom versions', () => {
-  assert.equal(DEFAULT_CLIENT_VERSION, '1.15.0.2_20261001');
+  assert.equal(DEFAULT_CLIENT_VERSION, '1.15.1.4_20261001');
   assert.equal(resolveClientVersion('1.13.0.5_20260723'), DEFAULT_CLIENT_VERSION);
   assert.equal(resolveClientVersion('1.15.0.1_20261001'), DEFAULT_CLIENT_VERSION);
-  assert.equal(resolveClientVersion('1.15.0.3_20261001'), '1.15.0.3_20261001');
+  assert.equal(resolveClientVersion('1.15.0.3_20261001'), DEFAULT_CLIENT_VERSION);
+  assert.equal(resolveClientVersion('1.15.2.0_20261001'), '1.15.2.0_20261001');
   assert.equal(resolveClientVersion('1.16.0.0_20261101'), '1.16.0.0_20261101');
   assert.equal(resolveClientVersion('custom-build'), 'custom-build');
 });

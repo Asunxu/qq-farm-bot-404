@@ -9,13 +9,13 @@ const { performance } = require('node:perf_hooks');
 const { ensureDataDir } = require('../config/runtime-paths');
 
 const DEFAULT_APP_ID = '1112386029';
-const OFFICIAL_VERSION = 'v3.9.0.1792070537';
-const OFFICIAL_SHA256 = '837bd271557dc9a21d5cd28b66076ea012eb39a4f4cbe298f529716469c087fc';
+const OFFICIAL_VERSION = 'v3.9.0.1792566360';
+const OFFICIAL_SHA256 = 'd1cd42c1f4f4cb15f111f16879f0edf7bf8d4a69a1bfe80d40138fdf3132dc15';
 // QQ 与微信各自一份 wasm：两份官方构建的导出符号相同，但内部埋点版本与小程应用标识不同，
 // 用错构建会让 ACE 上报与网关版本号不一致。
 const TSDK_BUILDS = Object.freeze({
-    qq: { file: 'tsdk-v3.9.0.1792070537.wasm', version: OFFICIAL_VERSION, sha256: OFFICIAL_SHA256 },
-    wx: { file: 'tsdk-wx.wasm', version: 'v3.9.0.1792070005', sha256: '1a9416db8b328e8957a079c583ffc5fc7e48d6af8c45aa40d9969dd68157beca' },
+    qq: { file: 'tsdk-v3.9.0.1792566360.wasm', version: OFFICIAL_VERSION, sha256: OFFICIAL_SHA256 },
+    wx: { file: 'tsdk-wx.wasm', version: 'v3.9.0.1792565883', sha256: '9c8b1ca061d8e122dd902ff651755d9d2f2006fdf5483765bffd9b9c10aee6ad' },
 });
 const MINI_PROGRAM_APP_IDS = Object.freeze({
     qq: DEFAULT_APP_ID,
