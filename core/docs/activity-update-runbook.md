@@ -413,6 +413,140 @@ spine/v2/xiyouzhongzi/xingyulinghua/1129003
 必须结合土地响应中的真实 `plant.id`、种子 ID 和变异字段确认；当前土地抓包已确认
 `29003 → 1029003`。
 
+### §5.5 用素材插件承载完整链更新
+
+手册 §4 + §5 描述的"导出素材 → 补 EventPlants → 复制到仓库"三步，宿主提供了
+一个可以**独立打包成插件上传**的机制，**不再需要改 `core/src/gameConfig/`**。
+适用于：活动持续进行期、需要频繁更新种子/作物/阶段图、多人协作时素材分支独立。
+
+宿主侧三处加载点会在激活时自动把插件安装目录下的文件合并进核心配置：
+
+| 宿主加载点 | 插件对应路径 | 合并策略 |
+| --- | --- | --- |
+| `loadPlantConfig` | `catalog/EventPlants.json` | 宿主先读，provider 追加；seed_id/plant_id 已存在则跳过 |
+| `loadSeedImages` | `assets/seed_images_named/*.png` | 宿主先索引，provider 只补缺失映射 |
+| `loadPlantPhaseManifest` | `assets/plant_images/manifest.json` | 宿主 manifest 先，provider 按 asset 补缺失 phase |
+| `loadSkinDetail` | `assets/seed_images_named/skinDetail/*.png` | 同上 |
+
+`admin.js` 的 `/game-config` express 路由在宿主目录没命中时，会依次查已激活
+provider 的 `assets/` 做回退，所以插件内的 manifest 仍然写
+`/game-config/plant_images/Crop_9003/3.png`，与宿主同前缀。
+
+**一键更新脚本**：
+
+```bash
+cd core
+
+# macOS 完整刷新：QQ 容器缓存导出 + CDN 补 + 打包成 zip
+node scripts/update-material-plugin.js \
+  --extract --download-missing --install-tool --bump-patch
+
+# Windows / 只跑 CDN 配置刷新 + 打包
+node scripts/update-material-plugin.js --cdn --source <miniapp_src解包目录> --bump-patch
+
+# 零前置：直接把当前 gameConfig 打包（Windows 首选）
+node scripts/update-material-plugin.js --bump-patch
+
+# 宿主已运行时直接上传（同 id 自动升级，无需重启）
+node scripts/update-material-plugin.js --bump-patch \
+  --upload --host http://localhost:3007 --token $TOKEN
+```
+
+**zip 产物结构**（`pack-material-plugin.js` 自动生成）：
+
+```
+material-plugin-1.1.0.zip
+├── manifest.json               // gameConfig.provides: true
+├── backend/index.js            // stub（空 register）
+├── catalog/EventPlants.json    // 增量植物表
+└── assets/
+    ├── assets-map.json         // 上传校验
+    ├── plant_images/           // 阶段图 + manifest.json
+    ├── seed_images_named/      // 种子图标
+    └── seed_images_named/skinDetail/
+```
+
+上传后宿主日志：
+
+```
+素材插件 material-plugin@1.1.0 已接入植物/种子/阶段图合并链路
+[配置] 已合并活动植物配置 (34 种)  ← 宿主 33 + provider 1
+```
+
+### §5.6 CDN 补图与文件命名
+
+背包或图鉴出现裸 ID 时（缺 seed_images_named/ 里的 PNG），不要先改代码，
+先看磁盘有没有对应的官方 assetName 文件。宿主 `gameConfig.js` 用文件名 hash
+扫描 + 所有数字 token 反向索引，**严格依赖官方 assetName 命名**：
+
+| 素材类型 | 必须命名为 | 来自 |
+| --- | --- | --- |
+| 种子/果实图 | `Crop_XXX_Seed.png` | Plant.asset_name + `_Seed` |
+| GUI 道具图标 | `icon_xxx.png` | ItemInfo.icon_res basename |
+| 小屋装饰 | `icon_wuding05.png` 等 | icon_res basename |
+| 阶段图 | `Crop_XXX/1.png` ~ `6.png` | 官方 plant_images 目录 |
+
+**果实和种子用同一张图**——官方 ItemInfo.icon_res 本来就指向 plant bundle
+同一个 spriteFrame，背包和图鉴都走 `getItemImageById(id)` 拿 `Crop_XXX_Seed.png`。
+
+**CDN 补图命令**（核心脚本 `core/scripts/find-cdn-resource.js`）：
+
+```bash
+cd core
+
+# 查官方配置表确认真实路径
+npm run inspect:cdn -- --table ItemInfo --id 1023          # 星砂
+npm run inspect:cdn -- --path gui/texture/icon/icon_S2_stardust
+
+# 下载到素材插件目录
+node scripts/find-cdn-resource.js \
+  --path gui/texture/icon/icon_S2_stardust \
+  --out plugins/material-plugin/assets/seed_images_named/icon_S2_stardust.png
+
+# 种子图（plant bundle）
+node scripts/find-cdn-resource.js \
+  --path model/v4/Crop_6030_Seed/spriteFrame \
+  --out plugins/material-plugin/assets/seed_images_named/Crop_6030_Seed.png
+```
+
+**常见 bundle 映射**：
+
+| 素材 | bundle | CDN path 前缀 |
+| --- | --- | --- |
+| 种子/作物 | plant | `model/v4/Crop_XXX_Seed/spriteFrame` |
+| GUI 图标 | extraRes | `gui/texture/icon/icon_xxx` |
+| 活动面板 UI | 活动专属 | 从活动 Prefab 查 |
+
+### §5.7 打包与上传注意事项
+
+1. **manifest.json 绝对不能用 PowerShell Set-Content 写**——它会加 UTF-8 BOM，
+   宿主 `JSON.parse` 报 `Unexpected token '﻿'`。必须用 Node.js `fs.writeFileSync`
+   或 adm-zip（`pack-material-plugin.js` 内部已用 adm-zip）。
+2. **zip 条目上限 MAX_ENTRIES = 5000**（2026-10-27 之前是 2000，v1.1.0 素材包
+   2055 条目上传报"条目数非法"）。打素材包时如果文件多，先确认条目数。
+3. **两个进程都注册 provider**：主进程 host.js 和 worker-host.js 都调
+   `gameConfig.registerExternalGameConfigProvider`。之前 worker 漏了，导致
+   warehouse（背包）拿不到插件素材——2026-10-27 已修复。
+4. **bootstrap 只在"内置版本 ≥ 已安装版本"时覆盖**：用户上传的 v1.1.0 > 预置
+   v1.0.0 → 重启后**保留用户版本**。不会被重置。
+5. **素材插件禁止停用/卸载**：host.js 加闸 + 前端隐藏按钮。这是设计约束，
+   因为素材插件是所有活动和背包的基础。
+6. **活动页面不显示素材插件卡片**：Activity.vue 跳过
+   `gameConfig.provides === true` 的插件，避免"QQ农场基础素材包"出现在活动列表里。
+
+更多素材插件细节、完整契约和开发流程见：**`core/docs/plugin-development.md §7 素材插件`**。**注意事项**：
+
+- manifest 必须声明 `gameConfig.provides: true` 才会触发合并；不带这个字段的
+  素材插件（只有活动面板那种）不会进入 gameConfig 链路。
+- 宿主目录优先：`core/src/gameConfig/` 里已存在的 EventPlants.json 条目不会被
+  provider 覆盖。要彻底替换先改宿主文件。
+- 停用 / 卸载素材插件时宿主自动从 Map 里移除其条目，再 loadConfigs；宿主自身
+  的配置不受影响。
+- 不能有多个素材插件同时提供同一 asset_name 的不同 phase 集，顺序依赖激活次序；
+  建议一个素材插件统一管全局。
+
+完整契约与冲突规则见 `core/docs/plugin-development.md §7`。
+
 ## 6. 代码接入顺序
 
 按以下方向实现，避免前端先出现可点击但无协议的按钮：

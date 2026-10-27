@@ -9,6 +9,8 @@ const {
     getConfigSnapshot,
     applyConfigSnapshot
 } = require('../models/store');
+const { createWorkerPluginHost } = require('../plugins/worker-host');
+const { setWorkerPluginHost } = require('../plugins/worker-host-bridge');
 const {
     checkAndClaimEmails,
     getEmailDailyState
@@ -110,6 +112,19 @@ const { runWithRequestPriority } = require('../utils/request-priority');
 const { loadProto } = require('../utils/proto');
 const { setLogHook, log, toNum } = require('../utils/utils');
 const { resourcePolicy, createResourceMonitor } = require('../runtime/resource-policy');
+
+// 活动插件宿主：加载/卸载由 worker-manager 通过 plugin_sync/plugin_load/plugin_unload 驱动；
+// 自动化 runner 挂在活动自动化心跳里，api 方法经 handleApiCall 兜底分发。
+// 必须在 log 导入之后创建（顶层引用 log，放前面会触发 TDZ 使 worker 启动即崩）。
+const pluginWorkerHost = createWorkerPluginHost({
+    sendMsgAsync: require('../utils/network').sendMsgAsync,
+    getUserState: () => require('../utils/network').getUserState(),
+    getBag: () => require('../services/warehouse').getBag(),
+    getBagItems: reply => require('../services/warehouse').getBagItems(reply),
+    getServerTimeSec: () => require('../utils/utils').getServerTimeSec(),
+    log
+});
+setWorkerPluginHost(pluginWorkerHost);
 
 // 设置环境变量中的账号ID
 if (parentPort && workerData && workerData.accountId && !process.env.FARM_ACCOUNT_ID) {
@@ -488,10 +503,8 @@ async function runStarActivityAutoClaims() {
     if (!loginReady || friendSyncPaused || starActivityClaimRunning) return;
 
     const automation = getAutomation() || {};
-    const milkTeaEnabled = Object.keys(require('../services/activity-milk-tea').AUTO_ACTIONS).some(key => automation[key] === true);
+    const pluginAutomationEnabled = pluginWorkerHost.hasEnabledAutomation(automation);
     const claimPassport = automation.star_passport_claim === true;
-    const claimSolarTerms = automation.star_solar_claim === true;
-    const claimSolarQuiz = automation.star_solar_quiz_claim === true;
     const claimRecords = automation.star_record_claim === true;
     const claimQingmeiSeedsEnabled = automation.qingmei_seed_claim === true;
     const brewQingmeiWineEnabled = automation.qingmei_wine_brew === true;
@@ -529,7 +542,7 @@ async function runStarActivityAutoClaims() {
         || petDiaryTreasureEnabled || petDiaryCompensationEnabled || petDiaryCharmEnabled || petDiaryBattleFlag;
     const qixiFriendPriority = Array.isArray(automation.qixi_friend_priority)
         ? automation.qixi_friend_priority.map(Number).filter(gid => gid > 0) : [];
-    if (!milkTeaEnabled && !claimPassport && !claimSolarTerms && !claimSolarQuiz && !claimRecords && !claimQingmeiSeedsEnabled && !brewQingmeiWineEnabled
+    if (!pluginAutomationEnabled && !claimPassport && !claimRecords && !claimQingmeiSeedsEnabled && !brewQingmeiWineEnabled
         && !useQixiDewEnabled && !buildQixiBridgeEnabled && !giftQixiSachetEnabled
         && !buyRainPoemBottleEnabled && !collectRainPoemWeatherEnabled && !useRainPoemSummonEnabled && !useRainPoemPrankEnabled
         && !unlockRainPoemResearchEnabled && !claimCharityShareEnabled && !donateCharityLoveEnabled
@@ -540,10 +553,7 @@ async function runStarActivityAutoClaims() {
     try {
         const {
             getStarActivity,
-            getSolarTermsInfo,
             claimSeasonPassportRewards,
-            claimSolarTermsReward,
-            autoClaimSolarTermsQuiz,
             claimStarRecordRewards,
             claimQingmeiSeeds,
             brewAndSellQingmeiWine
@@ -568,45 +578,8 @@ async function runStarActivityAutoClaims() {
             }
         }
 
-        if (claimSolarTerms) {
-            const solar = await getSolarTermsInfo().catch(error => {
-                log('活动', `节令小札读取失败：${error.message}`, { module: 'activity', event: '节令小札自动检查', result: 'error' });
-                return { terms: [] };
-            });
-            const terms = solar.terms.filter(term => term.claimable);
-            for (const term of terms) {
-                try {
-                    const result = await claimSolarTermsReward(Number(term.id) || 0);
-                    log('活动', `自动领取节令小札完成：${  term.title || result?.term?.title || term.id  }`, {
-                        module: 'activity',
-                        event: '节令小札自动领取',
-                        result: 'success',
-                        termId: Number(term.id) || 0,
-                        termTitle: term.title || result?.term?.title || ''
-                    });
-                } catch (err) {
-                    log('活动', `自动领取节令小札失败: ${  err.message}`, {
-                        module: 'activity',
-                        event: '节令小札自动领取',
-                        result: 'error',
-                        termId: Number(term.id) || 0
-                    });
-                }
-            }
-        }
-
-        if (claimSolarQuiz) {
-            await autoClaimSolarTermsQuiz({
-                enabled: () => loginReady && !friendSyncPaused && getAutomation().star_solar_quiz_claim === true,
-                onResult: (result, term) => log('活动', `${result.correct ? '自动领取节令答题附加奖励完成' : '节令答题未答对'}：${term.title}`, {
-                    module: 'activity', event: '节令答题自动领取', result: result.correct ? 'success' : 'error', termId: term.id,
-                    warning: result.solarTerms?.warning || '',
-                }),
-                onError: (error, term) => log('活动', `节令答题自动领取失败：${error.message}`, {
-                    module: 'activity', event: '节令答题自动领取', result: 'error', termId: term?.id,
-                }),
-            });
-        }
+        // 节令小札（star_solar_claim / star_solar_quiz_claim）已迁移为活动插件
+        // （core/plugins/solar-terms），自动化由插件 runner 执行。
 
         if (claimRecords && Number(activity?.starRecord?.claimableCount || 0) > 0) {
             try {
@@ -912,51 +885,14 @@ async function runStarActivityAutoClaims() {
             } // end if (rainPoem?.active !== false)
         }
 
-        if (milkTeaEnabled) {
-            const { AUTO_ACTIONS, phase } = require('../services/activity-milk-tea');
-            const service = require('../services/activity');
-            for (const [key, action] of Object.entries(AUTO_ACTIONS)) {
-                if (!loginReady || friendSyncPaused || getAutomation()?.[key] !== true) continue;
-                const currentPhase = phase(require('../utils/utils').getServerTimeSec());
-                if (!['business', 'settling'].includes(currentPhase)) break;
-                try {
-                    const state = await service.getMilkTea();
-                    const automation = getAutomation() || {};
-                    if (!Number(state.summary.shop_open_at) && !['shareDaily', 'shareRewards', 'fundRewards'].includes(action)) continue;
-                    let params = {};
-                    if (action === 'buy') {
-                        const goods = state.goods.find(x => x.category_tag === 'seed' && x.unlocked && x.remaining > 0 && !x.paid && x.affordable);
-                        if (!goods) continue;
-                        params = { goodsId: goods.id, count: 1 };
-                    }
-                    if (action === 'hire') {
-                        const capacity = state.levels.find(x => x.level === Number(state.shop.level))?.employee_slot_count || 0;
-                        const slot = Array.from({ length: capacity }, (_, i) => i).find(i => !state.shop.slots.some(x => Number(x.slot_index) === i && Number(x.end_at) > state.serverTime));
-                        if (slot == null) continue;
-                        params = { slotIndex: slot, autoSelect: true, ...require('../services/activity-milk-tea').normalizeHireOptions({
-                            durationId: automation.milk_tea_hire_duration, talentId: automation.milk_tea_hire_talent,
-                        }) };
-                    }
-                    if (action === 'cashier' && !state.shop.pending_rewards.some(x => Number(x.count) > 0)) continue;
-                    if (action === 'craft' && !state.recipes.some(recipe => recipe.unlocked && recipe.fruits?.length)) continue;
-                    if (action === 'boost' && !state.balances.some(item => String(item.id) === String(state.shop.sales_item_id) && Number(item.count) > 0)) continue;
-                    if (action === 'wages' && !state.summary.has_unclaimed_wage) continue;
-                    if (action === 'upgrade' && !state.summary.can_upgrade) continue;
-                    if (currentPhase === 'settling' && !['cashier', 'wages', 'shareDaily', 'shareRewards', 'fundRewards'].includes(action)) continue;
-                    if (action === 'shareDaily' && state.share?.daily?.daily_reward_claimed) continue;
-                    if (action === 'shareRewards' && !state.share?.milestones?.some(x => Number(x.state) === 2)) continue;
-                    if (action === 'fundRewards' && (!state.fund?.unlocked || !state.fund.tiers.some(x => Number(x.state) === 2))) continue;
-                    if (action === 'interact') {
-                        const shift = state.work?.my_shift;
-                        if (!shift || Number(shift.end_at) <= state.serverTime || state.work.interact_done || Number(shift.interact_count) >= Number(shift.interact_limit)) continue;
-                        params = { interactionType: Number(automation.milk_tea_work_interact_type) || 1 };
-                    }
-                    await service.operateMilkTea(action, params);
-                } catch (error) {
-                    // Mutation failures are logged by the shared service; retain query failures here.
-                    if (!error.milkTeaLogged) log('活动', `奶茶热销中自动检查失败：${error.message}`, { module: 'activity', event: '奶茶热销中自动检查', result: 'error' });
-                }
-            }
+        // 限时活动插件的自动化：各插件 runner 自行做开关、阶段与前置条件判断，
+        // 单个插件异常只落日志，不影响其他插件与内置活动。
+        if (pluginAutomationEnabled) {
+            await pluginWorkerHost.runAutomation({
+                automation: getAutomation() || {},
+                getServerTimeSec: require('../utils/utils').getServerTimeSec,
+                isAccountReady: () => loginReady && !friendSyncPaused,
+            });
         }
         if (petDiaryAnyEnabled) {
             await runPetDiaryAutomation({
@@ -1368,7 +1304,7 @@ function applyRuntimeConfig(config, syncStatusAfter = false) {
                 !prevAuto?.rain_poem_research_unlock && newAuto?.rain_poem_research_unlock
             ) || [
                 'pet_diary_adopt',
-                ...Object.keys(require('../services/activity-milk-tea').AUTO_ACTIONS),
+                ...pluginWorkerHost.getAutomationKeys(),
                 'pet_diary_feed',
                 'pet_diary_draw',
                 'pet_diary_story_claim',
@@ -1472,6 +1408,13 @@ onMasterMessage(async (msg) => {
             handleApiCall(msg);
         } else if (msg.type === 'config_sync') {
             applyRuntimeConfig(msg.config || {}, true);
+        } else if (msg.type === 'plugin_sync') {
+            // worker 启动时由主进程下发一次；之后安装/卸载走 plugin_load/plugin_unload
+            pluginWorkerHost.sync(msg.plugins || []);
+        } else if (msg.type === 'plugin_load') {
+            if (msg.plugin) pluginWorkerHost.load(msg.plugin);
+        } else if (msg.type === 'plugin_unload') {
+            if (msg.pluginId) pluginWorkerHost.unload(msg.pluginId);
         } else if (msg.type === 'watchdog_ping') {
             sendToMaster({ type: 'watchdog_pong', at: msg.at || Date.now() });
         } else if (msg.type === 'task_permit_granted') {
@@ -2080,17 +2023,12 @@ async function handleApiCall(msg) {
                 break;
             }
             case 'getSolarTermsInfo':
-            case 'getSolarTermsV2Info':
-            case 'getMilkTea':
             case 'getWishSignActivity':
             case 'getShareRewardActivity': {
                 const activity = require('../services/activity');
                 result = await activity[method]();
                 break;
             }
-            case 'answerSolarTerm':
-            case 'operateMilkTea':
-            case 'milkTeaRecords':
             case 'operateWishSign':
             case 'operateShareReward': {
                 const activity = require('../services/activity');
@@ -2201,8 +2139,15 @@ async function handleApiCall(msg) {
                 }
                 break;
             }
-            default:
-                error = 'Unknown method';
+            default: {
+                // 内置方法未命中时兜底分发给活动插件注册的 api 方法
+                const dispatched = await pluginWorkerHost.callApiMethod(method, args);
+                if (dispatched.found) {
+                    result = dispatched.result;
+                } else {
+                    error = 'Unknown method';
+                }
+            }
         }
     } catch (err) {
         error = err.message;

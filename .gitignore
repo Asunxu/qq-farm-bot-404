@@ -42,3 +42,18 @@ tools/wxapkg-decrypt/
 
 # 本地开发记忆（不提交）
 DEV-MEMORY.md
+
+# 活动插件：node_modules 与打包 zip 忽略；frontend/dist 是预构建插件产物，需随仓库提交
+core/plugins/*/frontend/node_modules/
+core/plugins/*/dist/
+!core/plugins/*/frontend/dist/
+core/test/fixtures/milk-tea-plugin.zip
+
+# 素材插件工作目录：打包脚本从此读取素材，打包前不入库（plugins/material-plugin/ 是唯一样本来源）
+core/src/gameConfig/seed_images_named/
+core/src/gameConfig/plant_images/
+core/src/gameConfig/effect_images/
+core/src/gameConfig/EventPlants.json
+
+# milk-tea 活动插件的 assets/ 素材已迁入 material-plugin，不再入库
+core/plugins/milk-tea/assets/

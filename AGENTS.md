@@ -127,6 +127,50 @@ CDN URL，只有用户明确要求保存素材时才使用 `--download <文件>`
   不得重命名或按体积裁剪，否则运行时会出现空图。仅在前端硬编码引用的素材才可自由重命名。
 - 素材映射表应记录每个文件的来源 URL 与 sha256，入库后需校验文件存在且摘要匹配，避免传输
   截断或版本错配。素材随仓库提交，不在构建期或运行期联网拉取。
+- 上述 `web/public/activity/<活动 slug>/` 约定适用于**内置活动**；限时活动插件的素材
+  放在插件包内 `assets/`（含 assets-map.json），由插件 manifest 的 `frontend.assetPrefix`
+  （如 `/activity/milk-tea`）在运行时提供，文件名同样是协议解析契约。
+
+## 限时活动插件化
+
+限时活动默认以**插件**形式交付，不再把活动代码写进主应用。插件是一个 zip 包，
+管理员在「管理面板 → 活动插件」上传后立即生效：主进程注册 HTTP 路由、worker 注册
+协议服务与自动化 runner、前端动态加载预构建 ESM 面板，全程不重启、不重新构建。
+完整宿主契约、manifest schema 与开发流程见 `core/docs/plugin-development.md`，
+首个参考实现在 `core/plugins/milk-tea/`。
+
+核心约定：
+
+- `manifest.json` 是插件唯一契约：活动时间窗、自动化开关（key/类型/默认值/各自时间窗）、
+  卡片素材、前后端入口全部由它声明。插件活动的开关 key 与时间窗**不再**双写
+  `core/src/models/store.js` 的 `TIMED_ACTIVITY_AUTOMATION_GROUPS` 与
+  `web/src/constants/activity-windows.ts`；这两个文件的手工同步约定仅剩内置活动。
+- 插件自动化开关由宿主按 manifest 自动注入配置白名单、渲染到两个设置页，并在活动
+  过期、插件停用或卸载时强制关闭并同步 worker；不得在主应用为插件开关手写卡片或
+  调度分支。插件 runner 通过 `ctx.registerAutomation` 挂到既有活动自动化心跳执行。
+- 插件后端只通过宿主 ctx 桥接拿能力（协议收发、背包、账号状态、日志、私有状态文件、
+  `ctx.callWorker`），路由必须挂在 `/api/` 下并复用宿主账号鉴权 helper；插件能力
+  等同受信任管理员代码，上传仅限 admin 角色，zip 上传做严格校验（路径穿越、大小、
+  素材 sha256）。
+- 插件前端是自包含 ESM（Vue 内联），导出 `mount(el, host)`；通过 host 注入的 api
+  与账号上下文发请求，不得在插件里复制鉴权逻辑。素材路径引用 manifest 声明的
+  `assetPrefix` 前缀；dev 环境需在 `web/vite.config.ts` 为新前缀补一条代理。
+  插件前端 lib 构建必须显式 `define` 替换 `process.env.NODE_ENV`，否则运行时报
+  process is not defined。
+- 插件后端**禁止直接 require 宿主包**（protobufjs 等）——插件安装目录向上解析不到
+  宿主 node_modules，必须经 `ctx.requireModule` 白名单；物品名称与图标经 ctx 注入
+  的统一配置（itemDto/helpers）解析，不得自建映射。常驻活动用 `0/0` 时间窗声明。
+- 手工操作入口与自动化必须复用同一插件服务与前置校验；涉及钻石等付费资源的
+  拒绝逻辑不得放宽。活动过期/停用/卸载后，卡片按有效期规则置灰、开关强制关闭、
+  worker 停止执行；重启后不得回启。
+- 基础素材（`EventPlants.json` 活动植物增量、种子图 `seed_images_named/`、
+  阶段图 `plant_images/`）也可单独打**素材插件**——manifest 声明
+  `gameConfig: { provides: true, urlPrefix: '/game-config' }`，宿主激活时自动把
+  插件目录下 `catalog/` 与 `assets/` 合并进核心配置，并在 `/game-config` 静态
+  路由做宿主优先、provider 补充的回退链。打包脚本 `core/scripts/pack-material-plugin.js`
+  与一站式更新脚本 `core/scripts/update-material-plugin.js` 可直接把现有
+  `core/src/gameConfig/` 产物打成 zip，上传后立即生效无需重启。详见
+  `core/docs/plugin-development.md §7` 与 `core/docs/activity-update-runbook.md §5.5`。
 
 ## 限时活动适配核心流程
 

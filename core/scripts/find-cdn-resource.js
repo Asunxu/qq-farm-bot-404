@@ -76,11 +76,19 @@ async function readRemoteJson(url, target, refresh) {
 }
 
 function defaultSource() {
-  const root = path.join(os.homedir(), 'Library/Containers/com.tencent.qqexminiprogram/Data/Library',
-    'Application Support/QQEX/miniapp/temps/miniapp_src');
-  const { latest } = findLatestSource(root);
-  if (!latest) throw new Error('未找到最新完整 QQ 农场源码，请用 --source 指定已解包目录');
-  return latest.directory;
+  const candidates = [
+    // macOS QQ 容器
+    path.join(os.homedir(), 'Library/Containers/com.tencent.qqexminiprogram/Data/Library',
+      'Application Support/QQEX/miniapp/temps/miniapp_src'),
+    // Windows QQ 容器
+    path.join(process.env.APPDATA || '', 'QQEX', 'miniapp', 'temps', 'miniapp_src'),
+  ].filter(Boolean);
+  for (const root of candidates) {
+    if (!fs.existsSync(root)) continue;
+    const { latest } = findLatestSource(root);
+    if (latest) return latest.directory;
+  }
+  throw new Error('未找到最新完整 QQ 农场源码，请用 --source 指定已解包目录');
 }
 
 async function loadRemoteData(settings, cacheRoot, refresh) {
@@ -89,7 +97,13 @@ async function loadRemoteData(settings, cacheRoot, refresh) {
   const tables = [];
   for (const bundle of remoteBundleNames(settings)) {
     const configFile = path.join(versionRoot, 'bundles', `${bundle}.json`);
-    const config = await readRemoteJson(bundleConfigUrl(settings, bundle), configFile, refresh);
+    let config;
+    try {
+      config = await readRemoteJson(bundleConfigUrl(settings, bundle), configFile, refresh);
+    } catch (error) {
+      process.stderr.write(`[跳过 bundle] ${bundle}: ${error.message}\n`);
+      continue;
+    }
     configs.set(bundle, config);
     for (const [indexText, value] of Object.entries(config.paths || {})) {
       const assetPath = value?.[0];

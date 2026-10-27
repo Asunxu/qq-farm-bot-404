@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { ActivityLabels, ActivitySection, ActivitySectionKey } from '@/components/activity/types'
 import { storeToRefs } from 'pinia'
-import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/api'
 import CharityFlowerActivityPanel from '@/components/activity/CharityFlowerActivityPanel.vue'
 import HeluExchangePanel from '@/components/activity/HeluExchangePanel.vue'
 import HeluPassportPanel from '@/components/activity/HeluPassportPanel.vue'
-import SolarTermsActivityPanel from '@/components/activity/SolarTermsActivityPanel.vue'
 import HeluSolarTermsPanel from '@/components/activity/HeluSolarTermsPanel.vue'
 import QixiActivityPanel from '@/components/activity/QixiActivityPanel.vue'
 import RainPoemActivityPanel from '@/components/activity/RainPoemActivityPanel.vue'
@@ -16,10 +15,10 @@ import WishShareActivityPanel from '@/components/activity/WishShareActivityPanel
 import { CHARITY_FLOWER_ACTIVITY_WINDOW, isWithinActivityWindowMs, PET_DIARY_ACTIVITY_WINDOW, RAIN_POEM_ACTIVITY_WINDOW, SHARE_REWARD_ACTIVITY_WINDOW, WISH_SIGN_ACTIVITY_WINDOW } from '@/constants/activity-windows'
 import { useAccountStore } from '@/stores/account'
 import { useActivityStore } from '@/stores/activity'
+import { usePluginsStore, type PluginInfo } from '@/stores/plugins'
 import { useToastStore } from '@/stores/toast'
 import { useUserStore } from '@/stores/user'
 
-const MilkTeaActivityPanel = defineAsyncComponent(() => import('@/components/activity/MilkTeaActivityPanel.vue'))
 const PetDiaryActivityPanel = defineAsyncComponent(() => import('@/components/activity/PetDiaryActivityPanel.vue'))
 
 const L: ActivityLabels = {
@@ -77,6 +76,7 @@ const L: ActivityLabels = {
 
 const accountStore = useAccountStore()
 const activityStore = useActivityStore()
+const pluginsStore = usePluginsStore()
 const toast = useToastStore()
 const userStore = useUserStore()
 const { currentAccountId, currentAccount } = storeToRefs(accountStore)
@@ -207,12 +207,14 @@ const activityCards = computed(() => {
         endTime: RAIN_POEM_ACTIVITY_WINDOW.endMs / 1000,
         activityIds: [2026070300],
       }]
-  if (!source.some(group => group.activityIds.includes(2026110100))) source.push({ id: 2026110100, title: '奶茶热销中', startTime: 1792029600, endTime: 1794844799, activityIds: [2026110100] })
-  const cards = source.map((group) => {
+  // 已启用插件声明的活动由插件卡片唯一呈现，目录不再重复出卡（避免同一活动双卡片）
+  const pluginOwnedIds = new Set(pluginsStore.enabledPlugins.flatMap(plugin => plugin.activityIds))
+  const directoryGroups = source.filter(group => !group.activityIds.some(id => pluginOwnedIds.has(id)))
+  const cards = directoryGroups.map((group) => {
     const adaptedKey = group.id === 2026090100
       ? 'pet-diary' as const
       : group.activityIds.includes(2026070300) ? 'rain-poem' as const : group.activityIds.includes(2026090900) ? 'charity-flower' as const : null
-    const adapted = group.activityIds.includes(2026110100) ? 'milk-tea' as const : group.activityIds.includes(2026092400) ? 'wish-sign' as const : group.activityIds.includes(2026092500) ? 'share-reward' as const : adaptedKey
+    const adapted = group.activityIds.includes(2026092400) ? 'wish-sign' as const : group.activityIds.includes(2026092500) ? 'share-reward' as const : adaptedKey
     const window = { startMs: group.startTime * 1000, endMs: group.endTime * 1000 }
     const hue = Math.abs(group.id * 37) % 360
     return {
@@ -222,18 +224,17 @@ const activityCards = computed(() => {
       adaptedKey: adapted,
       title: adapted === 'pet-diary' ? '萌宠日记' : group.title || `活动 ${group.id}`,
       description: adapted
-        ? adapted === 'milk-tea' ? '经营奶茶小店、兑换商店与兼职工作' : adapted === 'pet-diary' ? '查看比熊成长、爪印手记、拾物小铺与比熊赠礼' : adapted === 'charity-flower' ? '查看爱心、公益进度与奖励状态' : adapted === 'wish-sign' ? '查看祈愿状态、祈愿池和每日奖励' : adapted === 'share-reward' ? '查看每日快乐值与档位进度' : '查看天气、每日进度与气象研究'
+        ? adapted === 'pet-diary' ? '查看比熊成长、爪印手记、拾物小铺与比熊赠礼' : adapted === 'charity-flower' ? '查看爱心、公益进度与奖励状态' : adapted === 'wish-sign' ? '查看祈愿状态、祈愿池和每日奖励' : adapted === 'share-reward' ? '查看每日快乐值与档位进度' : '查看天气、每日进度与气象研究'
         : ACTIVITY_CLIENT_PREVIEWS.some(item => item.title === group.title || item.ids.some(id => group.activityIds.includes(id)))
           ? '已读取客户端静态预览，动态规则待服务端开放'
           : '暂未适配详情',
       icon: {
         '': 'i-carbon-calendar',
-        'milk-tea': 'i-carbon-cafe',
         'pet-diary': 'i-fa-solid-paw',
         'charity-flower': 'i-carbon-favorite',
         'rain-poem': 'i-carbon-rain-heavy', 'wish-sign': 'i-carbon-sun', 'share-reward': 'i-carbon-share',
       }[adapted || ''] || 'i-carbon-calendar',
-      image: adapted === 'milk-tea' ? '/activity/milk-tea/img_s4Main_bg.png' : adapted === 'pet-diary' ? '/activity/pet-diary/scene-home-adult.webp?v=20260912' : adapted === 'wish-sign' ? '/activity/wish-sign/card-bg.svg' : adapted === 'share-reward' ? '/activity/share-reward/card-bg.svg' : group.imageUrl || (adapted === 'rain-poem' ? '/activity/rain-poem/day-rain-bg.jpg' : ''),
+      image: adapted === 'pet-diary' ? '/activity/pet-diary/scene-home-adult.webp?v=20260912' : adapted === 'wish-sign' ? '/activity/wish-sign/card-bg.svg' : adapted === 'share-reward' ? '/activity/share-reward/card-bg.svg' : group.imageUrl || (adapted === 'rain-poem' ? '/activity/rain-poem/day-rain-bg.jpg' : ''),
       imagePosition: adapted === 'pet-diary' ? 'center 64%' : 'center',
       window,
       updatedMs: window.startMs,
@@ -244,12 +245,33 @@ const activityCards = computed(() => {
       },
     }
   })
-  cards.push({ permanent: true, key: 'solar-terms', activityIds: [], adaptedKey: null,
-    title: '节令小札', description: '查看各节令赠礼与领取状态', icon: 'i-carbon-notebook',
-    image: '', imagePosition: 'center', window: { startMs: 0, endMs: 0 },
-    updatedMs: Date.parse('2026-10-15T00:00:00+08:00'), status: 'active', pending: false,
-    backgroundStyle: { background: '#385c46' },
-  })
+  // 限时活动插件卡片：清单来自后端插件注册表（manifest 声明时间窗与素材），
+  // 与内置卡片走同一套置灰/排序/有效期规则；0/0 窗口表示常驻活动。
+  // gameConfig.provides=true 的素材插件不生成活动卡片（只做配置合并）。
+  for (const plugin of pluginsStore.enabledPlugins) {
+    if (plugin.gameConfig?.provides) continue
+    const primary = plugin.windows.activity || Object.values(plugin.windows)[0]
+    if (!primary)
+      continue
+    const permanent = primary.startTime === 0 && primary.endTime === 0
+    const window = { startMs: permanent ? 0 : primary.startTime * 1000, endMs: permanent ? 0 : primary.endTime * 1000 }
+    cards.push({
+      permanent,
+      key: `plugin:${plugin.id}`,
+      activityIds: plugin.activityIds,
+      adaptedKey: null,
+      title: plugin.name,
+      description: plugin.description || '由活动插件提供',
+      icon: plugin.card.icon || 'i-carbon-calendar',
+      image: plugin.card.image || '',
+      imagePosition: 'center',
+      window,
+      updatedMs: plugin.card.updatedMs || (permanent ? 0 : window.startMs),
+      status: permanent ? 'active' : activityWindowStatus(window),
+      pending: false,
+      backgroundStyle: { background: '#3f4c5a' },
+    })
+  }
   return cards.sort((left, right) => {
     return right.updatedMs - left.updatedMs
       || right.window.startMs - left.window.startMs
@@ -257,6 +279,90 @@ const activityCards = computed(() => {
 })
 const filteredActivityCards = computed(() => activityCards.value.filter(card => card.status === activityStatusFilter.value))
 const selectedActivityCard = computed(() => activityCards.value.find(card => card.key === selectedActivity.value) || null)
+
+// ---------- 活动插件动态挂载 ----------
+// 点击 plugin:<id> 卡片后按 manifest 提供的 entryUrl 动态 import 插件 ESM，
+// 由插件导出的 mount(el, host) 自行渲染；切走、切账号或窗口过期时卸载。
+const pluginMountEl = ref<HTMLElement | null>(null)
+let pluginInstance: { unmount: () => void } | null = null
+let pluginLoadGeneration = 0
+
+function pluginIdFromKey(key: string | null | undefined) {
+  return key && key.startsWith('plugin:') ? key.slice('plugin:'.length) : null
+}
+
+function ensurePluginCss(plugin: PluginInfo) {
+  if (!plugin.frontend.cssUrl || document.querySelector(`link[data-plugin-css="${plugin.id}"]`))
+    return
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = plugin.frontend.cssUrl
+  link.dataset.pluginCss = plugin.id
+  document.head.appendChild(link)
+}
+
+async function mountPlugin() {
+  const pluginId = pluginIdFromKey(selectedActivity.value)
+  const plugin = pluginId ? pluginsStore.byId(pluginId) : null
+  const el = pluginMountEl.value
+  if (!plugin || !el || pluginInstance)
+    return
+  if (selectedActivityCard.value?.status !== 'active')
+    return
+  const generation = ++pluginLoadGeneration
+  try {
+    ensurePluginCss(plugin)
+    const mod = await import(/* @vite-ignore */ plugin.frontend.entryUrl)
+    if (generation !== pluginLoadGeneration || !pluginMountEl.value)
+      return
+    const primary = plugin.windows.activity || Object.values(plugin.windows)[0]
+    // 0/0 窗口表示常驻活动，插件面板按不限时处理
+    const permanent = !primary || (primary.startTime === 0 && primary.endTime === 0)
+    pluginInstance = mod.mount(pluginMountEl.value, {
+      api,
+      getAccountId: () => String(currentAccountId.value || ''),
+      window: permanent
+        ? { startMs: 0, endMs: Number.MAX_SAFE_INTEGER }
+        : { startMs: primary.startTime * 1000, endMs: primary.endTime * 1000 },
+      onBack: () => { selectedActivity.value = null },
+      toast,
+    })
+  }
+  catch (error: any) {
+    toast.error(`活动插件加载失败：${error?.message || error}`)
+  }
+}
+
+function unmountPlugin() {
+  pluginLoadGeneration++
+  try {
+    pluginInstance?.unmount()
+  }
+  catch { /* 已卸载 */ }
+  pluginInstance = null
+}
+
+watch(selectedActivity, async () => {
+  if (pluginIdFromKey(selectedActivity.value)) {
+    await nextTick()
+    await mountPlugin()
+  }
+  else {
+    unmountPlugin()
+  }
+})
+// 账号切换后重新挂载插件面板（面板通过 getAccountId 桥读取账号，宿主负责重挂）
+watch(currentAccountId, () => {
+  if (pluginIdFromKey(selectedActivity.value)) {
+    unmountPlugin()
+    void nextTick().then(() => mountPlugin())
+  }
+})
+// 活动窗口过期（30 秒时钟推进后状态变化）时把用户退回列表
+watch(() => selectedActivityCard.value?.status, (status) => {
+  if (status !== 'active' && pluginIdFromKey(selectedActivity.value))
+    selectedActivity.value = null
+})
 const selectedActivityClientPreview = computed(() => {
   const card = selectedActivityCard.value
   if (!card)
@@ -395,6 +501,8 @@ function handleVisibilityChange() {
   if (document.visibilityState === 'visible') {
     nowMs.value = Date.now()
     refreshAll()
+    // 插件清单轻量接口：重新可见时同步一次（管理员可能在别的页面装/卸了插件）
+    void pluginsStore.fetchPlugins(true)
   }
 }
 
@@ -486,8 +594,10 @@ onMounted(() => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
   refreshAll()
   loadActivityDirectory()
+  void pluginsStore.fetchPlugins()
 })
 onUnmounted(() => {
+  unmountPlugin()
   if (nowTimer)
     window.clearInterval(nowTimer)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -610,7 +720,7 @@ onUnmounted(() => {
                 {{ card.title }}
               </h2>
               <p class="mt-1 text-sm text-cyan-50/80">
-                {{ card.permanent ? '按各节令开放时间领取' : `${formatActivityDateTime(card.window.startMs)} — ${formatActivityDateTime(card.window.endMs)}` }}
+                {{ card.permanent ? (card.window.startMs === 0 ? card.description : '按各节令开放时间领取') : `${formatActivityDateTime(card.window.startMs)} — ${formatActivityDateTime(card.window.endMs)}` }}
               </p>
               <div class="mt-4 flex items-center gap-2 text-xs text-white/65">
                 <span :class="card.icon" class="shrink-0 text-base text-cyan-200" />
@@ -625,7 +735,6 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <SolarTermsActivityPanel v-else-if="selectedActivity === 'solar-terms'" :labels="L" @back="selectedActivity = null" />
     <div v-else-if="selectedActivityCard?.adaptedKey === 'rain-poem' && selectedActivityCard.status === 'active'" class="space-y-3">
       <button class="inline-flex items-center gap-1.5 text-sm text-gray-500 transition hover:text-gray-900 dark:hover:text-white" @click="selectedActivity = null">
         <span class="i-carbon-arrow-left" />
@@ -664,8 +773,14 @@ onUnmounted(() => {
       萌宠日记面板自带游戏风格顶栏与返回按钮，且直接读 usePetDiaryStore，
       因此不外挂返回按钮、不传 activity/loading/error props。
     -->
-    <div v-else-if="selectedActivityCard?.adaptedKey === 'milk-tea' && selectedActivityCard.status === 'active'">
-      <MilkTeaActivityPanel @back="selectedActivity = null" />
+    <!--
+      活动插件面板：面板自带游戏风格顶栏与返回按钮，动态加载自插件注册表的 ESM。
+    -->
+    <div v-else-if="selectedActivityCard?.key?.startsWith('plugin:')">
+      <div v-if="selectedActivityCard.status === 'active'" ref="pluginMountEl" />
+      <div v-else class="rounded-lg bg-white p-10 text-center text-sm text-gray-500 shadow dark:bg-gray-800">
+        {{ selectedActivityCard.status === 'upcoming' ? '活动未开始' : '活动已结束' }}
+      </div>
     </div>
     <div v-else-if="selectedActivityCard?.adaptedKey === 'pet-diary'  && selectedActivityCard.status === 'active'">
       <PetDiaryActivityPanel v-if="petDiaryActivityActive && currentAccountId" @back="selectedActivity = null" />
