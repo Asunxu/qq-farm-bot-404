@@ -55,5 +55,5 @@ core/src/gameConfig/plant_images/
 core/src/gameConfig/effect_images/
 core/src/gameConfig/EventPlants.json
 
-# milk-tea 活动插件的 assets/ 素材已迁入 material-plugin，不再入库
-core/plugins/milk-tea/assets/
+# 活动插件 assets/ 素材（manifest.frontend.assetPrefix 声明的活动 UI 图，必须随插件入库）
+# material-plugin 只合并种子图/阶段图/effect，不包含活动 UI 图
