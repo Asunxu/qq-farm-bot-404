@@ -431,8 +431,43 @@ function createPluginHost({
                         }
                     }
                 }
+                // 镜像 pack.js 的 zip 布局，而不是整目录复制
+                // manifest.json 直接在安装目录根
                 fs.mkdirSync(installDir, { recursive: true });
-                fs.cpSync(srcDir, installDir, { recursive: true, preserveTimestamps: true });
+                fs.copyFileSync(path.join(srcDir, 'manifest.json'), path.join(installDir, 'manifest.json'));
+
+                // backend/ 原样
+                const backendSrc = path.join(srcDir, 'backend');
+                if (fs.existsSync(backendSrc)) {
+                    fs.cpSync(backendSrc, path.join(installDir, 'backend'), { recursive: true, preserveTimestamps: true });
+                }
+
+                // frontend/ 从 dist/ 扁平化（和 pack.js 的 zip 结构一致）
+                const feEntry = manifestObj.frontend?.entry;
+                const feCss = manifestObj.frontend?.css;
+                const frontendSrc = path.join(srcDir, 'frontend');
+                if (fs.existsSync(frontendSrc) && (feEntry || feCss)) {
+                    const feDist = path.join(frontendSrc, 'dist');
+                    const feInstallDir = path.join(installDir, 'frontend');
+                    // dist/ 扁平化路径是否完整可用
+                    const distFlatOk =
+                        (!feEntry || fs.existsSync(path.join(feDist, path.basename(feEntry)))) &&
+                        (!feCss || fs.existsSync(path.join(feDist, path.basename(feCss))));
+                    if (distFlatOk && fs.existsSync(feDist)) {
+                        fs.mkdirSync(feInstallDir, { recursive: true });
+                        if (feEntry) fs.copyFileSync(path.join(feDist, path.basename(feEntry)), path.join(feInstallDir, path.basename(feEntry)));
+                        if (feCss)   fs.copyFileSync(path.join(feDist, path.basename(feCss)),   path.join(feInstallDir, path.basename(feCss)));
+                    } else {
+                        // fallback：没有 dist/ 时整个复制（兼容没有构建的插件）
+                        fs.cpSync(frontendSrc, feInstallDir, { recursive: true, preserveTimestamps: true });
+                    }
+                }
+
+                // assets/ 原样
+                const assetsSrc = path.join(srcDir, 'assets');
+                if (fs.existsSync(assetsSrc)) {
+                    fs.cpSync(assetsSrc, path.join(installDir, 'assets'), { recursive: true, preserveTimestamps: true });
+                }
 
                 // 校验 manifest + 素材映射
                 const validated = validateManifest(manifestObj);
