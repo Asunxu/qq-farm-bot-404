@@ -18,7 +18,7 @@ const {
   getSeedImageBySeedId,
   isSeedItem,
 } = require('../config/gameConfig');
-const { isAutomationOn } = require('../models/store');
+const { isAutomationOn, getAutomation } = require('../models/store');
 const { sendMsgAsync, networkEvents, getUserState } = require('../utils/network');
 const { types } = require('../utils/proto');
 const { toLong, toNum, log, logWarn, sleep, getServerTimeSec } = require('../utils/utils');
@@ -529,12 +529,17 @@ async function sellAllFruits() {
     const bag = await getBag();
     const items = getBagItems(bag);
     const fruits = [];
+    const automationSnapshot = getAutomation();
 
     for (const item of items) {
       const id = toNum(item.id);
       const count = toNum(item.count);
-      const reservedForTea = require('./activity-milk-tea').reserveMilkTeaFruit(id, isAutomationOn('milk_tea_craft'), getServerTimeSec());
-      if (isFruitItemId(id) && count > 0 && !reservedForTea) {
+      // 活动插件可注册果实保留谓词（如奶茶营业期保护活动果实不被自动卖）
+      const reservedByPlugin = require('../plugins/worker-host-bridge').reserveFruit(id, {
+        automation: automationSnapshot,
+        nowSec: getServerTimeSec(),
+      });
+      if (isFruitItemId(id) && count > 0 && !reservedByPlugin) {
         fruits.push(item);
       }
     }

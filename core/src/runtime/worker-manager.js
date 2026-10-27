@@ -31,6 +31,10 @@ function createWorkerManager(deps) {
         onWorkerLog
     } = deps;
 
+    // 活动插件宿主允许启动后注入（runtime-engine 先建 manager，admin server 建好插件宿主
+    // 后调用 setPluginHost；新 worker 启动时据此下发插件清单）
+    let pluginHostRef = deps.pluginHost || null;
+
     const scheduler = createScheduler('worker_manager');
     const resourceMonitor = createResourceMonitor();
     const restartHistory = new Map();
@@ -41,12 +45,8 @@ function createWorkerManager(deps) {
     const WATCHDOG_TIMEOUT_MS = 90000;
     const DEFAULT_API_TIMEOUT_MS = 10000;
     // 按方法名的超时覆盖。萌宠日记单次操作要串行多次 RPC（读组 → 校验 → 操作 → 重读快照），
-    // 10 秒默认值会误判超时，取值与上游一致。
+    // 10 秒默认值会误判超时，取值与上游一致。活动插件的超时由插件路由显式传入。
     const METHOD_TIMEOUT_MS = {
-        // Milk tea mutations validate and refresh through multiple sequential RPCs.
-        getMilkTea: 90000,
-        operateMilkTea: 180000,
-        milkTeaRecords: 90000,
         getPetDiary: 90000,
         operatePetDiary: 180000,
         getPetDiaryRecords: 30000,
@@ -283,6 +283,13 @@ function createWorkerManager(deps) {
             config: buildConfigSnapshotForAccount(account.id)
         });
 
+        // 下发已启用的活动插件清单，worker 据此加载插件后端
+        try {
+            proc.send({ type: 'plugin_sync', plugins: pluginHostRef ? pluginHostRef.listForWorkerSync() : [] });
+        } catch (err) {
+            log('系统', `下发活动插件清单失败：${err.message}`);
+        }
+
         // 监听 Worker 消息
         proc.on('message', (msg) => {
             handleWorkerMessage(account.id, msg);
@@ -310,7 +317,7 @@ function createWorkerManager(deps) {
             });
 
             if (wrk && !wrk.stopping) {
-                const reason = `worker_exit:code=${code == null ? 'unknown' : code},signal=${signal || 'none'}`;
+                const reason = `worker_exit:code=${code ?? 'unknown'},signal=${signal || 'none'}`;
                 notifyAbnormalOffline(account.id, wrk, reason, 'worker_unexpected_exit',
                     `账号 ${displayName} 异常掉线（Worker 进程意外退出）`);
             }
@@ -761,6 +768,8 @@ function createWorkerManager(deps) {
         stopWorker,
         restartWorker,
         callWorkerApi,
+        // 注入活动插件宿主（runtime-engine 创建插件宿主后调用，新 worker 启动时下发清单用）
+        setPluginHost: (host) => { pluginHostRef = host || null; },
         getResourceStatus: () => ({
             policy: resourcePolicy,
             runtime: resourceMonitor.snapshot(),

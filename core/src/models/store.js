@@ -258,8 +258,6 @@ const DEFAULT_AUTOMATION = {
     friend_golden_bug: false,
     task: true,
     star_passport_claim: false,
-    star_solar_claim: false,
-    star_solar_quiz_claim: false,
     star_record_claim: false,
     qingmei_seed_claim: false,
     qingmei_wine_brew: false,
@@ -286,20 +284,6 @@ const DEFAULT_AUTOMATION = {
     // 拾物小铺兑换（exchange，需用户指定商品）、锦囊付费刷新（花点券）、
     // markStories（纯 UI 状态无奖励）、skipBattle（是设置项不是任务）。
     pet_diary_adopt: false,
-    milk_tea_share_daily: false,
-    milk_tea_share_rewards: false,
-    milk_tea_fund_rewards: false,
-    milk_tea_cashier: false,
-    milk_tea_wages: false,
-    milk_tea_upgrade: false,
-    milk_tea_craft: false,
-    milk_tea_boost: false,
-    milk_tea_hire: false,
-    milk_tea_hire_duration: 1,
-    milk_tea_hire_talent: 0,
-    milk_tea_work_interact: false,
-    milk_tea_work_interact_type: 1,
-    milk_tea_seed_buy: false,
     pet_diary_feed: false,
     pet_diary_draw: false,
     pet_diary_story_claim: false,
@@ -314,7 +298,8 @@ const DEFAULT_AUTOMATION = {
     fertilizer_buy_normal: false,
     auto_buy_dog_food: false,
     auto_feed_dog: false,
-    mall_coupon_gift_buy: false,
+    // mall_coupon_gift_buy（点券礼包自动购买）由奶茶活动插件声明，
+    // 执行方为内置 mall-gift-auto-buy 服务，窗口随插件 manifest。
     mystery_shop_auto_buy: false,
     mystery_shop_allow_gold: true,
     mystery_shop_allow_coupon: false,
@@ -371,9 +356,9 @@ const SHARE_REWARD_AUTOMATION_KEYS = ['share_reward_share', 'share_reward_daily'
 // 注意：这里的时间窗与 web/src/constants/activity-windows.ts 是手工同步的两份字面量
 // （core 是 CommonJS、web 是 TS，无法共享模块）。改一处必须改另一处，
 // 否则前端会显示后端已强制关闭的开关。
+// 限时活动插件的开关与时间窗不在这里维护：见下方插件自动化注册表。
+// mall_coupon_gift_buy（点券礼包）由奶茶插件声明，窗口随插件 manifest。
 const TIMED_ACTIVITY_AUTOMATION_GROUPS = [
-    { startTime: 1792029600, endTime: 1794844799, keys: ['mall_coupon_gift_buy', 'milk_tea_cashier', 'milk_tea_wages', 'milk_tea_share_daily', 'milk_tea_share_rewards', 'milk_tea_fund_rewards'] },
-    { startTime: 1792029600, endTime: 1794671998, keys: ['milk_tea_upgrade', 'milk_tea_craft', 'milk_tea_boost', 'milk_tea_hire', 'milk_tea_seed_buy', 'milk_tea_work_interact'] },
     { startTime: 1790179200, endTime: 1791388799, keys: WISH_SIGN_AUTOMATION_KEYS },
     { startTime: 1790179200, endTime: 1791820799, keys: SHARE_REWARD_AUTOMATION_KEYS },
     {
@@ -394,6 +379,74 @@ const TIMED_ACTIVITY_AUTOMATION_GROUPS = [
     }
 ];
 
+// ==================== 活动插件自动化注册表 ====================
+// 限时活动插件的自动化开关、默认值与时间窗由插件 manifest 声明，安装时写入
+// data/plugins/registry.json；主进程与 worker 进程在启动及收到变更通知时从
+// 注册表合并到这里。这取代了此前每个活动在 DEFAULT_AUTOMATION 与
+// TIMED_ACTIVITY_AUTOMATION_GROUPS 里双写字面量的做法。
+const PLUGIN_AUTOMATION_DEFAULTS = {};
+const PLUGIN_AUTOMATION_SPECS = new Map();
+const PLUGIN_TIMED_GROUPS = [];
+
+function applyPluginAutomationRegistry(plugins) {
+    for (const key of Object.keys(PLUGIN_AUTOMATION_DEFAULTS)) {
+        delete DEFAULT_ACCOUNT_CONFIG.automation[key];
+        ALLOWED_AUTOMATION_KEYS.delete(key);
+        PLUGIN_AUTOMATION_SPECS.delete(key);
+    }
+    for (const key of Object.keys(PLUGIN_AUTOMATION_DEFAULTS)) delete PLUGIN_AUTOMATION_DEFAULTS[key];
+    PLUGIN_TIMED_GROUPS.length = 0;
+    for (const plugin of plugins || []) {
+        const manifest = plugin.manifest || {};
+        const windows = manifest.windows || {};
+        const groupsByWindow = new Map();
+        for (const spec of manifest.automation || []) {
+            if (!spec || !spec.key) continue;
+            PLUGIN_AUTOMATION_SPECS.set(spec.key, { ...spec, pluginId: plugin.id });
+            PLUGIN_AUTOMATION_DEFAULTS[spec.key] = spec.default;
+            DEFAULT_ACCOUNT_CONFIG.automation[spec.key] = spec.default;
+            ALLOWED_AUTOMATION_KEYS.add(spec.key);
+            const window = spec.window && windows[spec.window];
+            if (window) {
+                const group = groupsByWindow.get(spec.window) || {
+                    startTime: Number(window.startTime) || 0,
+                    endTime: Number(window.endTime) || 0,
+                    keys: [],
+                    pluginId: plugin.id,
+                };
+                group.keys.push(spec.key);
+                groupsByWindow.set(spec.window, group);
+            }
+        }
+        for (const group of groupsByWindow.values()) PLUGIN_TIMED_GROUPS.push(group);
+    }
+}
+
+function loadPluginAutomationRegistry() {
+    try {
+        // getDataFile 只接受单参数，插件子路径用 path.join 拼接
+        const raw = JSON.parse(fs.readFileSync(path.join(getDataFile('plugins'), 'registry.json'), 'utf8'));
+        applyPluginAutomationRegistry((raw.plugins || []).filter(entry => entry.enabled === true));
+    } catch {
+        // 注册表不存在或损坏时按无插件处理
+        applyPluginAutomationRegistry([]);
+    }
+}
+
+function normalizePluginAutomationValue(spec, value) {
+    if (!spec) return !!value;
+    if (spec.type === 'boolean') return value === true;
+    if (spec.type === 'select') {
+        const num = Number(value);
+        return (spec.options || []).some(option => option.value === num) ? num : spec.default;
+    }
+    let num = Number(value);
+    if (!Number.isFinite(num)) num = Number(spec.default) || 0;
+    if (Number.isFinite(Number(spec.min))) num = Math.max(Number(spec.min), num);
+    if (Number.isFinite(Number(spec.max))) num = Math.min(Number(spec.max), num);
+    return num;
+}
+
 function isActivityWindowActive(group, nowSeconds = Math.floor(Date.now() / 1000)) {
     const startTime = Number(group && group.startTime) || 0;
     const endTime = Number(group && group.endTime) || 0;
@@ -402,8 +455,7 @@ function isActivityWindowActive(group, nowSeconds = Math.floor(Date.now() / 1000
 
 function getInactiveActivityAutomationKeys(nowSeconds = Math.floor(Date.now() / 1000)) {
     const keys = new Set(HIDDEN_ACTIVITY_AUTOMATION_KEYS);
-    if (!require('../config/solar-terms').isSolarQuizActive(nowSeconds)) keys.add('star_solar_quiz_claim');
-    for (const group of TIMED_ACTIVITY_AUTOMATION_GROUPS) {
+    for (const group of [...TIMED_ACTIVITY_AUTOMATION_GROUPS, ...PLUGIN_TIMED_GROUPS]) {
         if (isActivityWindowActive(group, nowSeconds)) continue;
         for (const key of group.keys || []) keys.add(key);
     }
@@ -434,9 +486,28 @@ function persistInactiveActivityAutomation(nowSeconds = Math.floor(Date.now() / 
     return changedAccounts;
 }
 
+// 插件卸载后其自动化开关立即失效：在所有账号上强制关闭并落盘，
+// 返回发生变更的账号 id 供上层同步 worker 配置。
+function forceDisableAutomationKeys(keys) {
+    const changedAccounts = [];
+    const targetKeys = (Array.isArray(keys) ? keys : []).map(String);
+    if (!targetKeys.length) return changedAccounts;
+    for (const [id, cfg] of Object.entries(globalConfig.accountConfigs || {})) {
+        let modified = false;
+        for (const key of targetKeys) {
+            if (cfg.automation?.[key] === true) {
+                cfg.automation[key] = false;
+                modified = true;
+            }
+        }
+        if (modified) changedAccounts.push(id);
+    }
+    if (changedAccounts.length) saveGlobalConfig({ throwOnError: true });
+    return changedAccounts;
+}
+
 /** 默认间隔配置（秒） */
-const DEFAULT_INTERVALS = {
-    farm: 2,
+const DEFAULT_INTERVALS = {    farm: 2,
     farmMin: 2,
     farmMax: 5,
     helpMin: 30,
@@ -819,9 +890,9 @@ function normalizeAccountConfig(raw, fallbackConfig = accountFallbackConfig) {
                 cfg.automation[key] = Math.max(60, Math.min(7200, Number(value) || 300));
             } else if (key === 'qixi_friend_priority') {
                 cfg.automation[key] = normalizeKnownFriendGids(value, []);
-            } else if (['milk_tea_hire_duration', 'milk_tea_hire_talent'].includes(key)) {
-                const field = { milk_tea_hire_duration: 'durationId', milk_tea_hire_talent: 'talentId' }[key];
-                cfg.automation[key] = require('../services/activity-milk-tea').normalizeHireOptions({ [field]: value })[field];
+            } else if (PLUGIN_AUTOMATION_SPECS.has(key)) {
+                // 插件自动化开关按 manifest 声明的类型与选项归一化
+                cfg.automation[key] = normalizePluginAutomationValue(PLUGIN_AUTOMATION_SPECS.get(key), value);
             } else if (key === 'wish_sign_choice') {
                 const choice = Number(value);
                 cfg.automation[key] = Number.isInteger(choice) && choice >= 1 && choice <= 6 ? choice : 1;
@@ -1291,6 +1362,9 @@ function setAdminPasswordHash(hash) {
 }
 
 loadGlobalConfig();
+// 插件自动化注册表：主进程与 worker 进程都在模块加载时合并一次；
+// 插件安装/卸载/启停后由宿主调用 reloadPluginAutomationRegistry() 刷新。
+loadPluginAutomationRegistry();
 // 将默认开启迁移结果持久化，避免下次重建容器覆盖用户之后保存的选择。
 if (captureDefaultsMigrated) saveGlobalConfig();
 
@@ -1356,9 +1430,9 @@ function applyConfigSnapshot(patch = {}, opts = {}) {
                 cfg.automation[key] = Math.max(60, Math.min(7200, Number(value) || 300));
             } else if (key === 'qixi_friend_priority') {
                 cfg.automation[key] = normalizeKnownFriendGids(value, []);
-            } else if (['milk_tea_hire_duration', 'milk_tea_hire_talent'].includes(key)) {
-                const field = { milk_tea_hire_duration: 'durationId', milk_tea_hire_talent: 'talentId' }[key];
-                cfg.automation[key] = require('../services/activity-milk-tea').normalizeHireOptions({ [field]: value })[field];
+            } else if (PLUGIN_AUTOMATION_SPECS.has(key)) {
+                // 插件自动化开关按 manifest 声明的类型与选项归一化
+                cfg.automation[key] = normalizePluginAutomationValue(PLUGIN_AUTOMATION_SPECS.get(key), value);
             } else if (key === 'wish_sign_choice') {
                 const choice = Number(value);
                 cfg.automation[key] = Number.isInteger(choice) && choice >= 1 && choice <= 6 ? choice : 1;
@@ -2232,7 +2306,10 @@ module.exports = {
     getAntiResaleConfig,
     setAntiResaleConfig,
     DEFAULT_ANTI_RESALE_CONFIG,
-    persistInactiveActivityAutomation
+    persistInactiveActivityAutomation,
+    forceDisableAutomationKeys,
+    reloadPluginAutomationRegistry: loadPluginAutomationRegistry,
+    getPluginAutomationSpecs: () => [...PLUGIN_AUTOMATION_SPECS.values()]
 };
 
 module.exports._test = {
@@ -2243,6 +2320,8 @@ module.exports._test = {
     RAIN_POEM_AUTOMATION_KEYS,
     CHARITY_FLOWER_AUTOMATION_KEYS,
     getInactiveActivityAutomationKeys,
+    applyPluginAutomationRegistry,
+    normalizePluginAutomationValue,
     getLocalDateKey,
     normalizeFriendDogInfoCache
 };

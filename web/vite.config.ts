@@ -72,6 +72,17 @@ export default defineConfig({
         target: 'http://localhost:3007',
         changeOrigin: true,
       },
+      // 活动插件：前端 ESM 产物由后端 /plugins 提供；插件素材前缀（如
+      // /activity/milk-tea）由后端插件宿主提供。新插件声明了新的素材前缀时
+      // 在此补一条对应的代理。
+      '/plugins': {
+        target: 'http://localhost:3007',
+        changeOrigin: true,
+      },
+      '/activity/milk-tea': {
+        target: 'http://localhost:3007',
+        changeOrigin: true,
+      },
     },
   },
 })

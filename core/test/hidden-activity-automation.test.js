@@ -63,14 +63,31 @@ test('hidden activity defaults stay disabled', () => {
 });
 
 test('milk tea coupon pack switch is cleared outside its activity window', () => {
-  for (const now of [1792029599, 1794844800]) {
-    const automation = { mall_coupon_gift_buy: true };
-    _test.disableHiddenActivityAutomation(automation, now);
-    assert.equal(automation.mall_coupon_gift_buy, false);
-  }
-  for (const now of [1792029600, 1794844799]) {
-    const automation = { mall_coupon_gift_buy: true };
-    _test.disableHiddenActivityAutomation(automation, now);
-    assert.equal(automation.mall_coupon_gift_buy, true);
+  // mall_coupon_gift_buy 由奶茶活动插件声明（窗口随插件 manifest），
+  // 这里注册等效的插件清单后验证窗口失效关闭行为。
+  _test.applyPluginAutomationRegistry([{
+    id: 'milk-tea',
+    enabled: true,
+    manifest: {
+      id: 'milk-tea',
+      windows: { activity: { startTime: 1792029600, endTime: 1794844799 } },
+      automation: [
+        { key: 'mall_coupon_gift_buy', label: '自动购买点券礼包', type: 'boolean', default: false, window: 'activity' },
+      ],
+    },
+  }]);
+  try {
+    for (const now of [1792029599, 1794844800]) {
+      const automation = { mall_coupon_gift_buy: true };
+      _test.disableHiddenActivityAutomation(automation, now);
+      assert.equal(automation.mall_coupon_gift_buy, false);
+    }
+    for (const now of [1792029600, 1794844799]) {
+      const automation = { mall_coupon_gift_buy: true };
+      _test.disableHiddenActivityAutomation(automation, now);
+      assert.equal(automation.mall_coupon_gift_buy, true);
+    }
+  } finally {
+    _test.applyPluginAutomationRegistry([]);
   }
 });

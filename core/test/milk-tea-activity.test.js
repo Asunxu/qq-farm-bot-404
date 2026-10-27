@@ -4,12 +4,21 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const protobuf = require('protobufjs');
-const { createMilkTeaService, WINDOW, phase, AUTO_ACTIONS, normalizeWireMaps } = require('../src/services/activity-milk-tea');
-const root = new protobuf.Root().loadSync(path.join(__dirname, '../src/proto/milk-tea.proto'), { keepCase: true });
-const type = name => root.lookupType(`gamepb.activitypb.${name}`);
+const pluginService = require('../plugins/milk-tea/backend/service');
+const { createMilkTeaService, WINDOW, phase, AUTO_ACTIONS, normalizeWireMaps, compareShopGoods, reserveMilkTeaFruit, selectHireCandidate, normalizeHireOptions } = pluginService;
+const pluginRoot = path.join(__dirname, '../plugins/milk-tea');
+const protoRoot = new protobuf.Root().loadSync(path.join(pluginRoot, 'backend/proto/milk-tea.proto'), { keepCase: true });
+const type = name => protoRoot.lookupType(`gamepb.activitypb.${name}`);
 const vectors = require('../src/activity-data/milk-tea-protocol-vectors.json');
 const fixtures = require('../src/activity-data/milk-tea-response-fixtures.json');
+const hostHelpers = require('../src/services/activity-center-helpers');
 const types = Object.fromEntries(['MilkTeaOperateRequest', 'MilkTeaOperateReply', 'MilkTeaGetGroupReply', 'GetGroupRequest'].map(name => [name === 'GetGroupRequest' ? 'ActivityGetGroupRequest' : name, type(name)]));
+
+// 把奶茶插件 manifest 注册进 store 的插件自动化注册表（与安装插件后的运行态一致），
+// 使窗口失效停用、开关归一化等测试走插件路径。
+const pluginManifest = require('../src/plugins/manifest').validateManifest(require(path.join(pluginRoot, 'manifest.json'))).manifest;
+require('../src/models/store')._test.applyPluginAutomationRegistry([{ id: pluginManifest.id, manifest: pluginManifest }]);
+
 test('official encoder fixed vectors retain every command, selector and nested parameter', () => {
   for (const vector of vectors) {
     const T = type('MilkTeaOperateRequest');
@@ -42,7 +51,7 @@ function setup({ now = WINDOW.startTime + 100, diamond = false, unlocked = true,
     { head: { id: '2026110104' }, share_reward: { summary: { current_score: 10, milestones: [{ tier_id: 1, threshold: 10, state: 2, rewards: [{ id: '80014', count: '1' }] }] } } },
     { head: { id: '2026110103' }, growth_fund: { unlocked: fundUnlocked, unlock_cost: [{ id: '1004', count: '360' }], tiers: [{ tier_id: 1, state: fundState, conditions: [{ type: 'milk_tea_store_level', current_value: 1, target_value: 1, reached: true }], reward: [{ id: '29005', count: '2' }] }] } }
   );
-  const service = createMilkTeaService({ log: (...args) => logs.push(args), types, getServerTimeSec: () => now, getUserState: () => account, log: (...args) => logs.push(args), getBag: async () => inventory, getBagItems: x => x, itemDto: x => ({ ...x, name: '夹具物品' }), sendMsgAsync: async (_, method, bytes) => {
+  const service = createMilkTeaService({ log: (...args) => logs.push(args), types, helpers: hostHelpers, getServerTimeSec: () => now, getUserState: () => account, log: (...args) => logs.push(args), getBag: async () => inventory, getBagItems: x => x, itemDto: x => ({ ...x, name: '夹具物品' }), sendMsgAsync: async (_, method, bytes) => {
     if (method === 'GetGroup') return { body: types.MilkTeaGetGroupReply.encode(types.MilkTeaGetGroupReply.fromObject(group)).finish() };
     const req = types.MilkTeaOperateRequest.toObject(types.MilkTeaOperateRequest.decode(bytes), { longs: String });calls.push(req);
     const fixture = Number(req.cmd) === 56 && hireList ? { id: req.id, cmd: req.cmd, milk_tea_get_hire_list: hireList } : Number(req.cmd) === 57 ? { id: req.id, cmd: req.cmd, milk_tea_hire: { results: [{ success: hireSuccess }] } } : Number(req.cmd) === 55 ? fixtures[282] : Number(req.cmd) === 58 ? fixtures[283] : Number(req.cmd) === 63 ? fixtures[206] : Number(req.cmd) === 67 && salesLog ? { id: req.id, cmd: req.cmd, milk_tea_get_sales_log: salesLog } : { id: req.id, cmd: req.cmd };
@@ -69,7 +78,7 @@ test('reads coalesce and expired activities send no Operate', async () => {
   assert.equal((await first).phase, 'ended');assert.equal(calls.length, 0);
   await assert.rejects(service.operateMilkTea('cashier'), /已结束/);assert.equal(calls.length, 0);
 });
-test('expired persisted automation flags cannot restart', () => {
+test('plugin windows registered into store disable expired automation flags', () => {
   const { disableHiddenActivityAutomation } = require('../src/models/store')._test;
   for (const now of [WINDOW.startTime - 1, WINDOW.endTime + 1]) {
     const config = Object.fromEntries(Object.keys(AUTO_ACTIONS).map(key => [key, true]));
@@ -80,8 +89,8 @@ test('expired persisted automation flags cannot restart', () => {
   assert.equal(config.milk_tea_boost, false);assert.equal(config.milk_tea_cashier, true);
 });
 test('official local assets exist and sha256 matches', () => {
-  const dir = path.join(__dirname, '../../web/public/activity/milk-tea');
-  for (const asset of JSON.parse(fs.readFileSync(path.join(dir, 'assets.json')))) assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, asset.file))).digest('hex'), asset.sha256, asset.file);
+  const dir = path.join(pluginRoot, 'assets');
+  for (const asset of JSON.parse(fs.readFileSync(path.join(dir, 'assets-map.json')))) assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, asset.file))).digest('hex'), asset.sha256, asset.file);
 });
 test('golden sprout is a 2x2 event plant', () => {
   const config = require('../src/config/gameConfig');config.loadConfigs();
@@ -89,7 +98,6 @@ test('golden sprout is a 2x2 event plant', () => {
 });
 
 test('automatic selling reserves event fruit only while automatic crafting is enabled in business phase', () => {
-  const { reserveMilkTeaFruit } = require('../src/services/activity-milk-tea');
   assert.equal(reserveMilkTeaFruit(40525, true, WINDOW.startTime), true);
   assert.equal(reserveMilkTeaFruit(49005, true, WINDOW.startTime), true);
   assert.equal(reserveMilkTeaFruit(40525, false, WINDOW.startTime), false);
@@ -107,9 +115,9 @@ test('manual shop purchase uses the same checked mutation envelope', async () =>
   await assert.rejects(service.operateMilkTea('buy', { goodsId: 301, count: 109 }), /商品未解锁/);
 });
 
-test('web references resolve to local assets', () => {
-  const component = ['MilkTeaActivityPanel.vue', 'MilkTeaShopDialogs.vue', 'MilkTeaRewardIcon.vue'].map(file => fs.readFileSync(path.join(__dirname, '../../web/src/components/activity', file), 'utf8')).join('\n');
-  for (const [, name] of component.matchAll(/img\('([^']+)'\)/g)) assert.ok(fs.existsSync(path.join(__dirname, '../../web/public/activity/milk-tea', `${name}.png`)), name);
+test('plugin frontend references resolve to packaged assets', () => {
+  const component = ['MilkTeaActivityPanel.vue', 'MilkTeaShopDialogs.vue', 'MilkTeaRewardIcon.vue'].map(file => fs.readFileSync(path.join(pluginRoot, 'frontend/src', file), 'utf8')).join('\n');
+  for (const [, name] of component.matchAll(/img\('([^']+)'\)/g)) assert.ok(fs.existsSync(path.join(pluginRoot, 'assets', `${name}.png`)), name);
 });
 
 
@@ -150,7 +158,7 @@ test('fund bear decorations and happiness reward resolve to local official icons
   for (let id = 210041; id <= 210048; id++) {
     const image = config.getItemImageById(id);
     assert.ok(image.startsWith('/activity/milk-tea/icon_'), String(id));
-    assert.ok(fs.existsSync(path.join(__dirname, '../../web/public', image)), image);
+    assert.ok(fs.existsSync(path.join(pluginRoot, 'assets', image.replace('/activity/milk-tea/', ''))), image);
   }
 });
 
@@ -183,7 +191,6 @@ test('exchange quantity maximum respects inventory, locks, diamonds and settleme
 });
 
 test('exchange uses official available, sold-out, locked groups and configured order', () => {
-  const { compareShopGoods } = require('../src/services/activity-milk-tea');
   const goods = [
     { id: 'locked-first', unlocked: false, remaining: 1, order: 1 },
     { id: 'available-later', unlocked: true, remaining: 2, order: 20, background_type: 1 },
@@ -211,14 +218,13 @@ test('batch shop quantity matches latest official encoder reconstruction', () =>
   const request = types.MilkTeaOperateRequest;
   for (const [count, hex] of [[7, '08ad021007'], [70, '08ad021046']]) {
     const message = request.fromObject({ id: '2026110102', cmd: 1, shop_buy: { goods_id: '301', count } });
-    const nested = root.lookupType('gamepb.activitypb.ShopBuyReq');
+    const nested = protoRoot.lookupType('gamepb.activitypb.ShopBuyReq');
     assert.equal(Buffer.from(nested.encode(message.shop_buy).finish()).toString('hex'), hex);
     const decoded = request.toObject(request.decode(request.encode(message).finish()), { longs: String });
     assert.equal(decoded.shop_buy.count, String(count));
   }
 });
 
-const { selectHireCandidate, normalizeHireOptions } = require('../src/services/activity-milk-tea');
 const employee = (gid, talent, extra = {}) => ({ friend: { gid: String(gid) }, talent_id: talent, state: 0, ...extra });
 test('hire chooses first matching idle friend, then other idle friends, then interns', () => {
   const other = employee(1, 9002), matching = employee(2, 9001), robot = employee(3, 9004, { is_robot: true });
@@ -287,4 +293,32 @@ test('milk tea logs localized outcomes, hire fallback and skips without dumping 
   await assert.rejects(rejected.service.operateMilkTea('hire', { autoSelect: true }));
   assert.equal(rejected.logs[0][2].result, 'error');
   assert.match(rejected.logs[0][1], /奶茶券不足/);
+});
+
+test('plugin worker entry registers api methods, automation runner and fruit reserve', () => {
+  const plugin = require(path.join(pluginRoot, 'backend/index.js'));
+  const registered = { api: new Map(), automations: [], reserves: [] };
+  plugin.worker.register({
+    manifest: pluginManifest, pluginId: pluginManifest.id, version: pluginManifest.version,
+    log: () => {},
+    requireModule: name => require(name),
+    sendMsgAsync: async () => { throw new Error('offline'); },
+    getUserState: () => ({}), getBag: async () => ({}), getBagItems: () => [],
+    getServerTimeSec: () => WINDOW.startTime,
+    itemDto: x => x,
+    helpers: hostHelpers,
+    registerApiMethod: (name, handler) => registered.api.set(name, handler),
+    registerAutomation: spec => registered.automations.push(spec),
+    registerFruitReserve: fn => registered.reserves.push(fn),
+    dataFile: () => '.',
+  });
+  assert.deepEqual([...registered.api.keys()].sort(), ['getMilkTea', 'milkTeaRecords', 'operateMilkTea']);
+  assert.ok(registered.automations[0].keys.includes('milk_tea_cashier'));
+  assert.equal(registered.reserves.length, 1);
+  // 营业期 + 自动制作开启时保留活动果实；关闭或结算期不保留
+  const reserve = registered.reserves[0];
+  assert.equal(reserve({ itemId: 40525, automation: { milk_tea_craft: true }, nowSec: WINDOW.startTime }), true);
+  assert.equal(reserve({ itemId: 40525, automation: { milk_tea_craft: false }, nowSec: WINDOW.startTime }), false);
+  assert.equal(reserve({ itemId: 40525, automation: { milk_tea_craft: true }, nowSec: WINDOW.settleTime }), false);
+  plugin.worker.unregister();
 });

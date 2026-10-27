@@ -6,6 +6,10 @@ export default defineConfig({
       include: [
         /\.(vue|svelte|[jt]sx|mdx?|astro|elm|php|phtml|html)($|\?)/,
         'src/**/*.{js,ts}',
+        // 活动插件前端源码：插件面板复用宿主的 UnoCSS 原子类，其模板类名
+        // 必须进入宿主扫描范围，否则运行时注入的 DOM 缺少对应样式
+        '../core/plugins/*/frontend/src/**/*.vue',
+        '../core/plugins/*/frontend/src/**/*.{js,ts}',
       ],
     },
   },

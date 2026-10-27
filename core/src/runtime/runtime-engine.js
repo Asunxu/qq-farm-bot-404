@@ -93,13 +93,7 @@ function createRuntimeEngine(options = {}) {
     });
 
     // 创建 Worker 管理器
-    const {
-        startWorker,
-        stopWorker,
-        restartWorker,
-        callWorkerApi,
-        getResourceStatus
-    } = createWorkerManager({
+    const workerManagerRef = createWorkerManager({
         fork,
         WorkerThread: Worker,
         runtimeMode,
@@ -142,6 +136,8 @@ function createRuntimeEngine(options = {}) {
             if (onLog) onLog(entry, accountId, accountName);
         }
     });
+
+    const { startWorker, stopWorker, restartWorker, callWorkerApi, getResourceStatus } = workerManagerRef;
 
     engine.startWorker = startWorker;
     engine.restartWorker = restartWorker;
@@ -253,6 +249,12 @@ function createRuntimeEngine(options = {}) {
 
         if (shouldStartAdmin && startAdminServer) {
             startAdminServer(dataProvider);
+            // admin server 启动时创建了活动插件宿主；注入 worker 管理器后，
+            // 之后启动的每个 worker 都会收到已启用插件清单。
+            const pluginHost = startAdminServer.pluginHost;
+            if (pluginHost && typeof workerManagerRef.setPluginHost === 'function') {
+                workerManagerRef.setPluginHost(pluginHost);
+            }
         }
 
         if (shouldAutoStart) {

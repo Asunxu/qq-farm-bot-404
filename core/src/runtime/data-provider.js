@@ -81,7 +81,17 @@ function createDataProvider(deps) {
         return callWorkerReadOnce(key, accountId, 'getIllustratedList', type, level);
     }
 
+    /** 向全部 worker 广播消息（活动插件宿主装载/卸载用） */
+    function sendToWorkers(message) {
+        for (const worker of Object.values(workers || {})) {
+            try { worker.process && worker.process.send(message); } catch { /* worker 已退出 */ }
+        }
+    }
+
     return {
+        /** 活动插件宿主使用：向全部 worker 广播消息 / 按账号同步配置快照 */
+        sendToWorkers,
+        broadcastConfigToWorkers,
         /** 获取账号运行状态 */
         getStatus: (ref) => {
             const id = resolveAccountId(ref);
@@ -237,9 +247,8 @@ function createDataProvider(deps) {
         operateWishSign: (ref, action, chooseId) => callWorkerApi(resolveAccountId(ref), 'operateWishSign', action, chooseId),
         getShareRewardActivity: (ref) => callWorkerApi(resolveAccountId(ref), 'getShareRewardActivity'),
         operateShareReward: (ref, action) => callWorkerApi(resolveAccountId(ref), 'operateShareReward', action),
-        getMilkTea: ref => callWorkerApi(resolveAccountId(ref), 'getMilkTea'),
-        operateMilkTea: (ref, action, params) => callWorkerApi(resolveAccountId(ref), 'operateMilkTea', action, params || {}),
-        milkTeaRecords: (ref, kind, params) => callWorkerApi(resolveAccountId(ref), 'milkTeaRecords', kind, params || {}),
+        // 活动插件桥：插件管理路由经此调用 worker 内插件注册的 api 方法
+        callWorker: (ref, method, ...args) => callWorkerApi(resolveAccountId(ref), method, ...args),
         getPetDiaryActivity: (ref) => callWorkerApi(resolveAccountId(ref), 'getPetDiaryActivity'),
         getPetDiary: (ref) => callWorkerApi(resolveAccountId(ref), 'getPetDiary'),
         operatePetDiary: (ref, action, params) => callWorkerApi(resolveAccountId(ref), 'operatePetDiary', action, params || {}),

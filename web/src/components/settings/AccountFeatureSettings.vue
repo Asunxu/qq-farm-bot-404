@@ -7,8 +7,8 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseSwitch from '@/components/ui/BaseSwitch.vue'
-import { CHARITY_FLOWER_ACTIVITY_WINDOW, isWithinActivityWindowMs, MILK_TEA_ACTIVITY_WINDOW, MILK_TEA_BUSINESS_WINDOW, PET_DIARY_ACTIVITY_WINDOW, RAIN_POEM_ACTIVITY_WINDOW, SHARE_REWARD_ACTIVITY_WINDOW, WISH_SIGN_ACTIVITY_WINDOW } from '@/constants/activity-windows'
-import { isSolarQuizActive } from '@/constants/solar-terms'
+import { CHARITY_FLOWER_ACTIVITY_WINDOW, isWithinActivityWindowMs, PET_DIARY_ACTIVITY_WINDOW, RAIN_POEM_ACTIVITY_WINDOW, SHARE_REWARD_ACTIVITY_WINDOW, WISH_SIGN_ACTIVITY_WINDOW } from '@/constants/activity-windows'
+import { usePluginsStore, type PluginInfo } from '@/stores/plugins'
 
 type ModuleKey = 'planting' | 'fertilizer' | 'friends' | 'steal' | 'merchant' | 'activity'
 
@@ -38,33 +38,33 @@ const SHOW_STAR_ACTIVITY = false
 const SHOW_QIXI_ACTIVITY = false
 const nowMs = ref(Date.now())
 let nowTimer: ReturnType<typeof window.setInterval> | null = null
-const showMilkTeaActivity = computed(() => isWithinActivityWindowMs(MILK_TEA_ACTIVITY_WINDOW, nowMs.value))
-const showMilkTeaBusiness = computed(() => isWithinActivityWindowMs(MILK_TEA_BUSINESS_WINDOW, nowMs.value))
-const milkTeaSettings = computed(() => [
-  { key: 'mall_coupon_gift_buy', label: '自动购买点券礼包', detail: '买完奶茶点券礼包剩余限额，余额不足时跳过' },
-  { key: 'milk_tea_cashier', label: '自动领取收益', detail: '领取店铺累计营业收益' },
-  { key: 'milk_tea_wages', label: '自动领取工资', detail: '领取已结算的打工工资' },
-  { key: 'milk_tea_share_daily', label: '自动领取每日快乐值', detail: '领取每日快乐值奖励' },
-  { key: 'milk_tea_share_rewards', label: '自动领取快乐值奖励', detail: '领取已达成的快乐值档位奖励' },
-  { key: 'milk_tea_fund_rewards', label: '自动领取成长基金奖励', detail: '仅领取已解锁且达到条件的奖励' },
-  ...(showMilkTeaBusiness.value
-    ? [
-        { key: 'milk_tea_upgrade', label: '自动升级店铺', detail: '营业额达到要求后升级' },
-        { key: 'milk_tea_craft', label: '自动制作奶茶', detail: '加工全部已解锁配方对应的果实' },
-        { key: 'milk_tea_boost', label: '自动使用宣传喇叭', detail: '使用背包中已有的宣传喇叭' },
-        { key: 'milk_tea_hire', label: '自动雇佣员工', detail: '按列表顺序选择首个符合类型的空闲好友' },
-        { key: 'milk_tea_work_interact', label: '自动打工互动', detail: '被雇佣后自动选择一种互动方式' },
-        { key: 'milk_tea_seed_buy', label: '自动购买已解锁种子', detail: '不使用钻石' },
-      ]
-    : []),
-])
+const pluginsStore = usePluginsStore()
+
+// 限时活动插件的自动化开关区：清单与开关元数据来自插件 manifest（后端注册表），
+// 按各自的声明时间窗显隐，替换旧版逐活动硬编码的开关卡片。
+function pluginWindowActive(plugin: PluginInfo, windowKey?: string) {
+  const window = windowKey ? plugin.windows[windowKey] : plugin.windows.activity || Object.values(plugin.windows)[0]
+  if (!window)
+    return true
+  // 0/0 窗口表示常驻活动
+  if (window.startTime === 0 && window.endTime === 0)
+    return true
+  return isWithinActivityWindowMs({ startMs: window.startTime * 1000, endMs: window.endTime * 1000 }, nowMs.value)
+}
+const pluginAutomationGroups = computed(() => pluginsStore.enabledPlugins
+  .map(plugin => ({
+    plugin,
+    active: pluginWindowActive(plugin),
+    specs: plugin.automation.filter(spec => pluginWindowActive(plugin, spec.window)),
+  }))
+  .filter(group => group.specs.length > 0))
+const pluginAutomationKeys = computed(() => pluginAutomationGroups.value.flatMap(group => group.specs.map(spec => spec.key)))
 
 const showRainPoemActivity = computed(() => isWithinActivityWindowMs(RAIN_POEM_ACTIVITY_WINDOW, nowMs.value))
 const showCharityFlowerActivity = computed(() => isWithinActivityWindowMs(CHARITY_FLOWER_ACTIVITY_WINDOW, nowMs.value))
 const showPetDiaryActivity = computed(() => isWithinActivityWindowMs(PET_DIARY_ACTIVITY_WINDOW, nowMs.value))
 const showWishSignActivity = computed(() => isWithinActivityWindowMs(WISH_SIGN_ACTIVITY_WINDOW, nowMs.value))
 const showShareRewardActivity = computed(() => isWithinActivityWindowMs(SHARE_REWARD_ACTIVITY_WINDOW, nowMs.value))
-const showSolarQuiz = computed(() => isSolarQuizActive(nowMs.value))
 
 const moduleInfo: Record<ModuleKey, { title: string, description: string, icon: string, image: string, tone: string }> = {
   planting: { title: '种植与收获', description: '选种、收获、出售和巡田节奏', icon: 'i-carbon-sprout', image: '/game-config/module_icons/planting.png', tone: 'emerald' },
@@ -80,10 +80,7 @@ const fertilizerName = computed(() => props.fertilizerOptions.find(item => item.
 const selectedLandNames = computed(() => props.fertilizerLandTypeOptions.filter(item => automation.value.automation.fertilizer_land_types?.includes(item.value)).map(item => item.label))
 const selectedLandTypeCount = computed(() => Array.isArray(automation.value.automation.fertilizer_land_types) ? automation.value.automation.fertilizer_land_types.length : 0)
 const activityKeys = computed(() => [
-  'star_solar_claim',
-  ...(showSolarQuiz.value ? ['star_solar_quiz_claim'] : []),
-  ...(showMilkTeaActivity.value ? ['mall_coupon_gift_buy', 'milk_tea_cashier', 'milk_tea_wages', 'milk_tea_share_daily', 'milk_tea_share_rewards', 'milk_tea_fund_rewards'] : []),
-  ...(showMilkTeaBusiness.value ? ['milk_tea_upgrade', 'milk_tea_craft', 'milk_tea_boost', 'milk_tea_hire', 'milk_tea_work_interact', 'milk_tea_seed_buy'] : []),
+  ...pluginAutomationKeys.value,
   ...(showRainPoemActivity.value
     ? ['rain_poem_bottle_buy', 'rain_poem_weather_collect', 'rain_poem_summon_use', 'rain_poem_prank_use', 'rain_poem_research_unlock']
     : []),
@@ -166,7 +163,6 @@ function summaryTags(key: ModuleKey) {
   }
   return [
     automation.value.automation.task ? '自动完成日常任务' : '不做日常',
-    (automation.value.automation.star_solar_claim || (showSolarQuiz.value && automation.value.automation.star_solar_quiz_claim)) && '节令小札',
     SHOW_STAR_ACTIVITY && starFestivalEnabled.value && '心许千灯星垂野',
     SHOW_QIXI_ACTIVITY && qixiActivityEnabled.value && '鹊桥寄情',
     showRainPoemActivity.value && rainPoemActivityEnabled.value && '雨落成诗',
@@ -291,6 +287,7 @@ function cancel() {
 }
 onMounted(() => {
   loadQixiFriends()
+  void pluginsStore.fetchPlugins()
   nowTimer = window.setInterval(() => {
     nowMs.value = Date.now()
   }, 60000)
@@ -610,14 +607,6 @@ watch(() => props.currentAccountId, loadQixiFriends)
                 </div>
               </section>
 
-              <section class="border border-gray-100 rounded-lg p-4 space-y-3 dark:border-gray-700">
-                <h3 class="text-sm font-medium">节令小札</h3>
-                <div class="grid gap-3 sm:grid-cols-2">
-                  <BaseSwitch v-model="automation.automation.star_solar_claim" label="自动领取节令奖励" />
-                  <BaseSwitch v-if="showSolarQuiz" v-model="automation.automation.star_solar_quiz_claim" label="自动领取答题附加奖励" />
-                </div>
-              </section>
-
               <section v-if="SHOW_STAR_ACTIVITY" class="border border-gray-100 rounded-lg p-4 space-y-3 dark:border-gray-700">
                 <div>
                   <div class="text-sm text-gray-700 font-medium dark:text-gray-300">
@@ -754,45 +743,39 @@ watch(() => props.currentAccountId, loadQixiFriends)
                 </div>
               </section>
 
-              <section v-if="showMilkTeaActivity" class="border border-amber-200 rounded-xl bg-amber-50/40 p-4 dark:border-amber-900/40 dark:bg-amber-950/10">
-                <h3 class="mb-4 text-sm text-gray-900 font-semibold dark:text-gray-100">
-                  奶茶热销中
-                </h3>
+              <!-- 限时活动插件的自动化开关：清单与文案来自插件 manifest（含点券礼包等
+                   由插件窗口托管、内置服务执行的开关） -->
+              <section v-for="group in pluginAutomationGroups" :key="group.plugin.id" class="border border-cyan-200 rounded-xl bg-cyan-50/30 p-4 dark:border-cyan-900/40 dark:bg-cyan-950/10">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <h3 class="text-sm text-gray-900 font-semibold dark:text-gray-100">
+                    {{ group.plugin.name }}
+                  </h3>
+                  <span class="text-xs text-gray-400">活动插件 v{{ group.plugin.version }}</span>
+                </div>
                 <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  <div v-for="setting in milkTeaSettings" :key="setting.key" class="min-w-0 flex items-center justify-between gap-4 border border-amber-100 rounded-lg bg-white/80 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-900/40">
-                    <div class="min-w-0">
-                      <div :id="`milk-tea-setting-${setting.key}`" class="text-sm text-gray-800 font-medium leading-5 dark:text-gray-200">
-                        {{ setting.label }}
-                      </div>
-                      <p class="mt-1 text-xs text-gray-500 leading-5 dark:text-gray-400">
-                        {{ setting.detail }}
+                  <template v-for="spec in group.specs" :key="`${group.plugin.id}-${spec.key}`">
+                    <label v-if="spec.type === 'select'" class="min-w-0 border border-cyan-100 rounded-lg bg-white/80 px-3 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-900/40">
+                      <span class="text-gray-800 font-medium dark:text-gray-200">{{ spec.label }}</span>
+                      <select v-model.number="automation.automation[spec.key]" class="mt-2 w-full rounded border p-2 dark:bg-gray-900">
+                        <option v-for="option in spec.options" :key="option.value" :value="option.value">{{ option.label }}</option>
+                      </select>
+                      <p v-if="spec.detail" class="mt-1 text-xs text-gray-500 leading-5 dark:text-gray-400">
+                        {{ spec.detail }}
                       </p>
+                    </label>
+                    <div v-else class="min-w-0 flex items-center justify-between gap-4 border border-cyan-100 rounded-lg bg-white/80 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-900/40">
+                      <div class="min-w-0">
+                        <div :id="`plugin-setting-${group.plugin.id}-${spec.key}`" class="text-sm text-gray-800 font-medium leading-5 dark:text-gray-200">
+                          {{ spec.label }}
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500 leading-5 dark:text-gray-400">
+                          {{ spec.detail }}
+                        </p>
+                      </div>
+                      <BaseSwitch v-model="automation.automation[spec.key]" class="shrink-0" :aria-labelledby="`plugin-setting-${group.plugin.id}-${spec.key}`" />
                     </div>
-                    <BaseSwitch v-model="automation.automation[setting.key]" class="shrink-0" :aria-labelledby="`milk-tea-setting-${setting.key}`" />
-                  </div>
+                  </template>
                 </div>
-                <div v-if="showMilkTeaBusiness" class="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label class="text-sm">雇佣时长
-                    <select v-model.number="automation.automation.milk_tea_hire_duration" class="mt-1 w-full rounded border p-2 dark:bg-gray-900">
-                      <option :value="1">4 小时</option><option :value="2">12 小时</option><option :value="3">24 小时</option>
-                    </select>
-                  </label>
-                  <label class="text-sm">雇佣类型
-                    <select v-model.number="automation.automation.milk_tea_hire_talent" class="mt-1 w-full rounded border p-2 dark:bg-gray-900">
-                      <option :value="0">任意好友</option><option :value="9001">金牌销售</option><option :value="9002">金牌宣传</option><option :value="9003">金牌服务</option><option :value="9004">实习员工（默默搬砖）</option>
-                    </select>
-                  </label>
-                  <label class="text-sm sm:col-span-2">打工互动方式
-                    <select v-model.number="automation.automation.milk_tea_work_interact_type" class="mt-1 w-full rounded border p-2 dark:bg-gray-900">
-                      <option :value="1">宣传推广</option>
-                      <option :value="2">花式摇杯</option>
-                      <option :value="3">招牌试饮</option>
-                      <option :value="4">划水摸鱼</option>
-                      <option :value="5">申请涨薪</option>
-                    </select>
-                  </label>
-                </div>
-                <p v-if="showMilkTeaBusiness" class="mt-2 text-xs text-gray-500">指定类型无空闲好友时，依次选择其他空闲好友、实习员工；均不可用则等待下次检查。时长或奶茶券不足时跳过。</p>
               </section>
               <section v-if="showPetDiaryActivity" class="border border-violet-100 rounded-lg p-4 space-y-3 dark:border-violet-900/40">
                 <div>

@@ -4,8 +4,8 @@ import api from '@/api'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseSwitch from '@/components/ui/BaseSwitch.vue'
-import { CHARITY_FLOWER_ACTIVITY_WINDOW, isWithinActivityWindowMs, MILK_TEA_ACTIVITY_WINDOW, RAIN_POEM_ACTIVITY_WINDOW } from '@/constants/activity-windows'
-import { isSolarQuizActive } from '@/constants/solar-terms'
+import { CHARITY_FLOWER_ACTIVITY_WINDOW, isWithinActivityWindowMs, RAIN_POEM_ACTIVITY_WINDOW } from '@/constants/activity-windows'
+import { usePluginsStore, type PluginInfo } from '@/stores/plugins'
 
 interface AutomationSettings {
   automation: {
@@ -22,8 +22,6 @@ interface AutomationSettings {
     friend_golden_bug: boolean
     friend_help_exp_limit: boolean
     star_passport_claim: boolean
-    star_solar_claim: boolean
-    star_solar_quiz_claim: boolean
     star_record_claim: boolean
     qingmei_seed_claim: boolean
     qingmei_wine_brew: boolean
@@ -106,9 +104,25 @@ const SHOW_STAR_ACTIVITY = false
 const SHOW_QIXI_ACTIVITY = false
 const nowMs = ref(Date.now())
 let nowTimer: ReturnType<typeof window.setInterval> | null = null
+const pluginsStore = usePluginsStore()
+// 限时活动插件的自动化开关（与账号设置页共享同一批配置字段与显隐规则）
+function pluginWindowActive(plugin: PluginInfo, windowKey?: string) {
+  const window = windowKey ? plugin.windows[windowKey] : plugin.windows.activity || Object.values(plugin.windows)[0]
+  if (!window)
+    return true
+  // 0/0 窗口表示常驻活动
+  if (window.startTime === 0 && window.endTime === 0)
+    return true
+  return isWithinActivityWindowMs({ startMs: window.startTime * 1000, endMs: window.endTime * 1000 }, nowMs.value)
+}
+const pluginAutomationGroups = computed(() => pluginsStore.enabledPlugins
+  .map(plugin => ({
+    plugin,
+    specs: plugin.automation.filter(spec => pluginWindowActive(plugin, spec.window)),
+  }))
+  .filter(group => group.specs.length > 0))
 const showRainPoemActivity = computed(() => isWithinActivityWindowMs(RAIN_POEM_ACTIVITY_WINDOW, nowMs.value))
 const showCharityFlowerActivity = computed(() => isWithinActivityWindowMs(CHARITY_FLOWER_ACTIVITY_WINDOW, nowMs.value))
-const showSolarQuiz = computed(() => isSolarQuizActive(nowMs.value))
 const qixiFriends = ref<Array<{ gid: number, name: string, level?: number }>>([])
 function qixiPriority() {
   return Array.isArray(settings.value.automation.qixi_friend_priority)
@@ -146,6 +160,7 @@ function qixiFriendName(gid: number) {
 }
 onMounted(() => {
   loadQixiFriends()
+  void pluginsStore.fetchPlugins()
   nowTimer = window.setInterval(() => {
     nowMs.value = Date.now()
   }, 60000)
@@ -187,9 +202,18 @@ watch(() => props.currentAccountId, loadQixiFriends)
         <BaseSwitch v-model="settings.automation.farm_push" label="推送触发巡田" />
         <BaseSwitch v-model="settings.automation.land_upgrade" label="自动升级土地" />
         <BaseSwitch v-model="settings.automation.fertilizer_gift" label="自动填充化肥" />
-        <section v-if="isWithinActivityWindowMs(MILK_TEA_ACTIVITY_WINDOW, nowMs)" class="space-y-3">
-          <h3 class="text-sm font-medium">奶茶热销中</h3>
-          <BaseSwitch v-model="settings.automation.mall_coupon_gift_buy" label="自动购买点券礼包（买完剩余限额）" />
+        <!-- 限时活动插件的自动化开关（含点券礼包等由插件窗口托管、内置服务执行的开关） -->
+        <section v-for="group in pluginAutomationGroups" :key="group.plugin.id" class="space-y-3">
+          <h3 class="text-sm font-medium">{{ group.plugin.name }}<span class="ml-1.5 text-xs text-gray-400">活动插件 v{{ group.plugin.version }}</span></h3>
+          <template v-for="spec in group.specs" :key="`${group.plugin.id}-${spec.key}`">
+            <label v-if="spec.type === 'select'" class="block max-w-xs text-sm">
+              <span>{{ spec.label }}</span>
+              <select v-model.number="(settings.automation as any)[spec.key]" class="mt-1 w-full rounded border p-2 dark:bg-gray-900">
+                <option v-for="option in spec.options" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select>
+            </label>
+            <BaseSwitch v-else v-model="(settings.automation as any)[spec.key]" :label="spec.label" />
+          </template>
         </section>
         <BaseSwitch v-model="settings.automation.fertilizer_buy_organic" label="自动购买有机化肥" />
         <BaseSwitch v-model="settings.automation.fertilizer_buy_normal" label="自动购买无机化肥" />
@@ -297,12 +321,6 @@ watch(() => props.currentAccountId, loadQixiFriends)
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div v-if="SHOW_STAR_ACTIVITY" class="border border-gray-200 rounded-lg bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
             <BaseSwitch v-model="settings.automation.star_passport_claim" label="自动领取千星游记" />
-          </div>
-          <div class="border border-gray-200 rounded-lg bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
-            <BaseSwitch v-model="settings.automation.star_solar_claim" label="自动领取节令小札" />
-          </div>
-          <div v-if="showSolarQuiz" class="border border-gray-200 rounded-lg bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
-            <BaseSwitch v-model="settings.automation.star_solar_quiz_claim" label="自动领取答题附加奖励" />
           </div>
           <div v-if="SHOW_STAR_ACTIVITY" class="border border-gray-200 rounded-lg bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
             <BaseSwitch v-model="settings.automation.star_record_claim" label="自动领取观星礼录" />

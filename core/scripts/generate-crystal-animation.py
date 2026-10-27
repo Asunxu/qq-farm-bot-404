@@ -9,7 +9,12 @@ import struct
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ASSETS = ROOT / 'core/src/gameConfig/effect_images/mutant/jinghui'
+# 优先素材插件（唯一样本来源），兼容 src/gameConfig 旧布局（dev pack 同步副本）
+_ASSETS_CANDIDATES = [
+    ROOT / 'core/plugins/material-plugin/assets/effect_images/mutant/jinghui',
+    ROOT / 'core/src/gameConfig/effect_images/mutant/jinghui',
+]
+ASSETS = next((p for p in _ASSETS_CANDIDATES if p.is_dir()), _ASSETS_CANDIDATES[0])
 
 
 def read_curve(ref, binary):

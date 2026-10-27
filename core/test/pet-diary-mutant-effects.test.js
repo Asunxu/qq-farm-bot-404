@@ -1,8 +1,8 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { assetExists, readAsset } = require('./_asset-resolver');
 const { getMutantEffectById, getMutantEffectByIcon, getMutantEffectsByIds } = require('../src/config/gameConfig');
 const { getPlantMutantConfigIds } = require('../src/services/farm-land-analyzer');
 const { images } = require('../src/gameConfig/seed_images_named/mutant/pet-diary-sources.json');
@@ -20,7 +20,7 @@ test('pet diary mutations resolve numeric and protocol string IDs with local ico
     assert.equal(officialIcon, `gui/texture/mutant/icon/${icon}/spriteFrame`);
     assert.ok(description);
     assert.equal(source.file, `${icon}.png`);
-    const bytes = fs.readFileSync(path.join(__dirname, '../src/gameConfig/seed_images_named/mutant', source.file));
+    const bytes = readAsset(path.join('seed_images_named', 'mutant', source.file));
     assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
     assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), source.sha256);
   }
@@ -46,11 +46,11 @@ test('own land resolves bichon mutation from plant and current phase records', (
 });
 
 test('official bichon land mask matches its recorded CDN asset', () => {
-  const root = path.join(__dirname, '../src/gameConfig/effect_images/mutant/bichon');
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'sources.json')));
+  const root = path.join('effect_images', 'mutant', 'bichon');
+  const manifest = JSON.parse(readAsset(path.join(root, 'sources.json')));
   assert.equal(manifest.files.length, 1);
   assert.equal(manifest.files[0].assetPath, 'gui/texture/petdog/mutant/dog90031/11/spriteFrame');
-  const bytes = fs.readFileSync(path.join(root, manifest.files[0].file));
+  const bytes = readAsset(path.join(root, manifest.files[0].file));
   assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), manifest.files[0].sha256);
 });

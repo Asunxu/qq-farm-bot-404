@@ -1,18 +1,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const { assetExists, readAsset } = require('./_asset-resolver');
 
 test('official crystal resources match recorded hashes and default clip', () => {
-  const root = path.join(__dirname, '../src/gameConfig/effect_images/mutant/jinghui');
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'sources.json')));
+  const root = path.join('effect_images', 'mutant', 'jinghui');
+  const manifest = JSON.parse(readAsset(path.join(root, 'sources.json')));
   for (const entry of manifest.files) {
-    const bytes = fs.readFileSync(path.join(root, entry.file));
+    const bytes = readAsset(path.join(root, entry.file));
     assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), entry.sha256, entry.file);
   }
-  const clip = JSON.parse(fs.readFileSync(path.join(root, 'anim_loop_1.json'))).document[0];
+  const clip = JSON.parse(readAsset(path.join(root, 'anim_loop_1.json'))).document[0];
   assert.equal(clip._name, manifest.defaultClip);
   assert.equal(clip.sample, 60);
   assert.equal(clip._duration, 80 / 60);

@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
+const { assetExists, readAsset } = require('./_asset-resolver');
 
 const {
   getItemById,
@@ -29,12 +30,7 @@ const activityPlants = [
 function assertImageExists(itemId, label) {
   const imageUrl = getItemImageById(itemId);
   assert.match(imageUrl, /^\/game-config\/seed_images_named\/.+\.png$/, label);
-  const relativePath = decodeURIComponent(imageUrl.replace('/game-config/', ''));
-  assert.equal(
-    fs.existsSync(path.join(__dirname, '..', 'src', 'gameConfig', relativePath)),
-    true,
-    `${label} file`,
-  );
+  assert.equal(assetExists(imageUrl), true, `${label} file`);
 }
 
 test('supplemental source mappings resolve names and official images', () => {
@@ -102,7 +98,7 @@ test('seed levels come from seed item configuration', () => {
   const seedLevels = new Map(getAllSeeds().map(seed => [seed.seedId, seed.requiredLevel]));
   assert.equal(seedLevels.get(20003), 2, 'carrot seed level');
   assert.equal(seedLevels.get(20129), 81, 'forget-me-not seed level');
-  assert.equal(seedLevels.get(26032), 1, 'evening primrose seed level');
+  assert.equal(seedLevels.get(26032), 21, 'evening primrose seed level (official ItemInfo now includes this seed, level=21)');
   assert.equal(seedLevels.get(20416), 1, 'haha pumpkin seed level');
 });
 
@@ -139,10 +135,15 @@ test('rain poem activity items resolve official names and static icons', () => {
     assert.equal(getItemById(itemId)?.name, name);
     assert.equal(getItemImageById(itemId), imageUrl);
     const imagePath = imageUrl.split('?', 1)[0];
-    const publicPath = imagePath.startsWith('/activity/')
-      ? path.join(__dirname, '..', '..', 'web', 'public', imagePath)
-      : path.join(__dirname, '..', 'src', 'gameConfig', imageUrl.replace('/game-config/', ''));
-    assert.equal(fs.existsSync(publicPath), true, `${name} image file`);
+    if (imagePath.startsWith('/activity/')) {
+      assert.equal(
+        fs.existsSync(path.join(__dirname, '..', '..', 'web', 'public', imagePath)),
+        true,
+        `${name} image file`,
+      );
+    } else {
+      assert.equal(assetExists(imagePath), true, `${name} image file`);
+    }
   }
 });
 

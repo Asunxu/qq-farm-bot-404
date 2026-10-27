@@ -8,6 +8,7 @@
  * - 原始 protobuf 回退解码
  */
 const protobuf = require('protobufjs/minimal');
+const { readProtoFields, getProtoNumber, getProtoBytes, getProtoBytesAll, getProtoString, parseActivityItemMessage } = require('./activity-center-helpers');
 const path = require('node:path');
 const { sendMsgAsync, getUserState, isConnected } = require('../utils/network');
 const { types } = require('../utils/proto');
@@ -1345,84 +1346,6 @@ function decodeItemHex(raw) {
   } catch {
     return null;
   }
-}
-
-function readProtoFields(rawBytes) {
-  const buf = Buffer.from(rawBytes || []);
-  const reader = protobuf.Reader.create(buf);
-  const entries = [];
-
-  while (reader.pos < reader.len) {
-    let tag = 0;
-    try {
-      tag = reader.uint32();
-    } catch {
-      break;
-    }
-
-    const field = tag >>> 3;
-    const wire = tag & 0x7;
-    try {
-      if (wire === 0) {
-        entries.push({ field, wire, value: toNum(reader.uint64()) });
-      } else if (wire === 2) {
-        entries.push({ field, wire, value: Buffer.from(reader.bytes()) });
-      } else if (wire === 5) {
-        entries.push({ field, wire, value: reader.uint32() });
-      } else if (wire === 1) {
-        entries.push({ field, wire, value: reader.fixed64() });
-      } else {
-        reader.skipType(wire);
-      }
-    } catch {
-      break;
-    }
-  }
-
-  return entries;
-}
-
-function getProtoNumber(entries, field, fallback = 0) {
-  const hit = (entries || []).find((entry) => entry.field === field && entry.wire === 0);
-  return hit ? toNum(hit.value) : fallback;
-}
-
-function getProtoBytes(entries, field) {
-  const hit = (entries || []).find((entry) => entry.field === field && entry.wire === 2);
-  return hit ? Buffer.from(hit.value || []) : null;
-}
-
-function getProtoBytesAll(entries, field) {
-  return (entries || [])
-    .filter((entry) => entry.field === field && entry.wire === 2)
-    .map((entry) => Buffer.from(entry.value || []));
-}
-
-function getProtoString(entries, field, fallback = '') {
-  const bytes = getProtoBytes(entries, field);
-  if (!bytes || bytes.length === 0) return fallback;
-  try {
-    return bytes.toString('utf8');
-  } catch {
-    return fallback;
-  }
-}
-
-function parseActivityItemMessage(rawBytes) {
-  const entries = readProtoFields(rawBytes);
-  const itemId = getProtoNumber(entries, 1);
-  const count = Math.max(0, getProtoNumber(entries, 2) || 1);
-  if (itemId <= 0) return null;
-
-  const info = getItemById(itemId);
-  return {
-    itemId,
-    itemCount: count,
-    count,
-    itemName: (info && info.name) || `物品${itemId}`,
-    name: (info && info.name) || `物品${itemId}`,
-    image: getItemImageById(itemId) || '',
-  };
 }
 
 function getSubActivityKey(activity) {
@@ -3347,34 +3270,6 @@ module.exports = {
   normalizePetDiaryItem,
 };
 
-let milkTeaService;
-function getMilkTeaService() {
-  if (!milkTeaService) milkTeaService = require('./activity-milk-tea').createMilkTeaService({ types, sendMsgAsync, getBag, getBagItems, getUserState, getServerTimeSec: require('../utils/utils').getServerTimeSec, itemDto: petDiaryHelpers.itemDto });
-  return milkTeaService;
-}
-module.exports.getMilkTea = () => getMilkTeaService().getMilkTea();
-module.exports.operateMilkTea = (action, params) => getMilkTeaService().operateMilkTea(action, params);
-module.exports.milkTeaRecords = (kind, params) => getMilkTeaService().milkTeaRecords(kind, params);
-
-let solarTermsV2Service;
-function getSolarTermsV2Service() {
-  if (!solarTermsV2Service) solarTermsV2Service = require('./activity-solar-terms').createSolarTermsService({
-    types,
-    send: sendMsgAsync,
-    assertConnected: assertActivityConnection,
-    now: () => require('../utils/utils').getServerTimeSec(),
-    mapItem: item => {
-      const itemId = toNum(item?.id);
-      const count = Math.max(0, toNum(item?.count));
-      const info = getItemById(itemId) || {};
-      return { itemId, itemCount: count, count, itemName: info.name || `物品${itemId}`, name: info.name || `物品${itemId}`, image: getItemImageById(itemId) || '' };
-    },
-  });
-  return solarTermsV2Service;
-}
-module.exports.getSolarTermsV2Info = () => getSolarTermsV2Service().getInfo();
-module.exports.answerSolarTerm = (termId, optionIndex, canProceed) => getSolarTermsV2Service().answer(termId, optionIndex, canProceed);
-module.exports.autoClaimSolarTermsQuiz = hooks => getSolarTermsV2Service().autoClaim(hooks);
 
 // These actions previously emitted only wire request logs, with no account-visible outcome.
 const { withActivityOperationLog } = require('./activity-operation-log');

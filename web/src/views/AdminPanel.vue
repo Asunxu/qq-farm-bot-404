@@ -10,6 +10,7 @@ import AdminLoginLogConfirmModal from '@/components/admin/AdminLoginLogConfirmMo
 import AdminLoginLogPanel from '@/components/admin/AdminLoginLogPanel.vue'
 import AdminPanelHeader from '@/components/admin/AdminPanelHeader.vue'
 import AdminPanelTabs from '@/components/admin/AdminPanelTabs.vue'
+import AdminPluginsPanel from '@/components/admin/AdminPluginsPanel.vue'
 import AdminSystemPanel from '@/components/admin/AdminSystemPanel.vue'
 import AdminUserConfirmModals from '@/components/admin/AdminUserConfirmModals.vue'
 import AdminUserPanel from '@/components/admin/AdminUserPanel.vue'
@@ -29,9 +30,10 @@ const toast = useToastStore()
 
 const savedAdminTab = localStorage.getItem('admin-active-tab')
 const routeQueryTab = String((useRoute().query?.tab) || '')
-const activeTab = ref<AdminTabKey>(['card', 'user', 'log', 'system'].includes(routeQueryTab)
+const adminTabKeys = ['card', 'user', 'log', 'system', 'plugin']
+const activeTab = ref<AdminTabKey>(adminTabKeys.includes(routeQueryTab)
   ? routeQueryTab as AdminTabKey
-  : ['card', 'user', 'log', 'system'].includes(savedAdminTab || '')
+  : adminTabKeys.includes(savedAdminTab || '')
     ? savedAdminTab as AdminTabKey
     : 'card')
 
@@ -44,6 +46,7 @@ const tabs = [
   { key: 'user', label: '用户', icon: 'i-carbon-user-admin' },
   { key: 'log', label: '日志', icon: 'i-carbon-document' },
   { key: 'system', label: '系统配置', icon: 'i-carbon-settings-services' },
+  { key: 'plugin', label: '插件', icon: 'i-carbon-plug' },
 ] as const
 
 const modalVisible = ref(false)
@@ -415,6 +418,10 @@ onMounted(() => {
         @refresh="fetchLoginLogs"
         @clear="openClearLogsConfirm"
       />
+
+      <div v-else-if="activeTab === 'plugin'">
+        <AdminPluginsPanel />
+      </div>
 
       <div v-else-if="activeTab === 'system'" class="space-y-5">
         <div class="sticky top-0 z-10 flex items-center justify-between border border-gray-200 rounded-xl bg-white/95 p-4 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-800/95">

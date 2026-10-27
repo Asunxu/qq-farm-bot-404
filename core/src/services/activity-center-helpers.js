@@ -9,6 +9,99 @@ const { getItemById, getItemImageById } = require('../config/gameConfig');
 
 const MAX_SIGNED_INT64 = 9223372036854775807n;
 
+// ==================== 裸 protobuf 字段读取 ====================
+// 用于解析未注册到 proto Root 的官方协议（如节令小札 V1 的手工编码消息）。
+// 从 activity.js 迁入：供宿主 activity service 与活动插件（ctx.helpers）共用。
+
+function toNumSafe(val) {
+    if (val === null || val === undefined) return 0;
+    if (LongModule.isLong && LongModule.isLong(val)) return val.toNumber();
+    if (typeof val === 'object' && 'low' in val && 'high' in val) {
+        if (typeof val.toNumber === 'function') return val.toNumber();
+        return (val.low >>> 0) + (val.high * 0x100000000);
+    }
+    if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+    const n = Number(val);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function readProtoFields(rawBytes) {
+    const protobuf = require('protobufjs');
+    const buf = Buffer.from(rawBytes || []);
+    const reader = protobuf.Reader.create(buf);
+    const entries = [];
+    while (reader.pos < reader.len) {
+        let tag = 0;
+        try {
+            tag = reader.uint32();
+        } catch {
+            break;
+        }
+        const field = tag >>> 3;
+        const wire = tag & 0x7;
+        try {
+            if (wire === 0) {
+                entries.push({ field, wire, value: toNumSafe(reader.uint64()) });
+            } else if (wire === 2) {
+                entries.push({ field, wire, value: Buffer.from(reader.bytes()) });
+            } else if (wire === 5) {
+                entries.push({ field, wire, value: reader.uint32() });
+            } else if (wire === 1) {
+                entries.push({ field, wire, value: reader.fixed64() });
+            } else {
+                reader.skipType(wire);
+            }
+        } catch {
+            break;
+        }
+    }
+    return entries;
+}
+
+function getProtoNumber(entries, field, fallback = 0) {
+    const hit = (entries || []).find(entry => entry.field === field && entry.wire === 0);
+    return hit ? toNumSafe(hit.value) : fallback;
+}
+
+function getProtoBytes(entries, field) {
+    const hit = (entries || []).find(entry => entry.field === field && entry.wire === 2);
+    return hit ? Buffer.from(hit.value || []) : null;
+}
+
+function getProtoBytesAll(entries, field) {
+    return (entries || [])
+        .filter(entry => entry.field === field && entry.wire === 2)
+        .map(entry => Buffer.from(entry.value || []));
+}
+
+function getProtoString(entries, field, fallback = '') {
+    const bytes = getProtoBytes(entries, field);
+    if (!bytes || bytes.length === 0) return fallback;
+    try {
+        return bytes.toString('utf8');
+    } catch {
+        return fallback;
+    }
+}
+
+/** 解析 corepb.Item 结构的裸字节为统一物品展示对象 */
+function parseActivityItemMessage(rawBytes) {
+    const entries = readProtoFields(rawBytes);
+    const itemId = getProtoNumber(entries, 1);
+    const count = Math.max(0, getProtoNumber(entries, 2) || 1);
+    if (itemId <= 0) return null;
+    const info = getItemById(itemId);
+    const name = (info && info.name) || `物品${itemId}`;
+    return {
+        itemId,
+        itemCount: count,
+        count,
+        itemName: name,
+        name,
+        image: getItemImageById(itemId) || '',
+    };
+}
+
 class ActivityBusinessError extends Error {
     constructor(code, message) {
         super(message);
@@ -141,4 +234,10 @@ module.exports = {
     textContent,
     itemDto,
     serializeMutation,
+    readProtoFields,
+    getProtoNumber,
+    getProtoBytes,
+    getProtoBytesAll,
+    getProtoString,
+    parseActivityItemMessage,
 };

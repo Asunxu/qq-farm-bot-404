@@ -1,5 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const path = require('node:path');
+const { readAsset } = require('./_asset-resolver');
 
 const { buildPetSnapshot, BICHON_DOG_ID, getDogActivationState } = require('../src/services/pets');
 const { _test: storeTest } = require('../src/models/store');
@@ -30,8 +32,6 @@ test('capital mode detects already harvestable land immediately', () => {
 });
 
 test('bichon metadata and official image resolve for owned and unowned pets', () => {
-  const fs = require('node:fs');
-  const path = require('node:path');
   const crypto = require('node:crypto');
   const { getItemById, getItemImageById } = require('../src/config/gameConfig');
   const { entries } = require('../src/gameConfig/seed_images_named/pet-sources.json');
@@ -39,7 +39,7 @@ test('bichon metadata and official image resolve for owned and unowned pets', ()
   const image = getItemImageById(90031);
   assert.equal(getItemById(90031).name, '比熊犬');
   assert.equal(image, `/game-config/seed_images_named/${source.file}`);
-  const bytes = fs.readFileSync(path.join(__dirname, '../src/gameConfig/seed_images_named', source.file));
+  const bytes = readAsset(path.join('seed_images_named', source.file));
   assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), source.sha256);
   const unowned = buildPetSnapshot({}).dogs.find(dog => dog.id === 90031);
@@ -86,7 +86,6 @@ test('bichon activation requires server activatable marker and stops after owner
 
 test('ActivateDog request for bichon matches decrypted HAR bytes', () => {
   const protobuf = require('protobufjs');
-  const path = require('node:path');
   const root = new protobuf.Root();
   root.loadSync(path.join(__dirname, '../src/proto/dogpb.proto'), { keepCase: true });
   const request = root.lookupType('gamepb.dogpb.ActivateDogRequest');

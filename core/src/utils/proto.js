@@ -48,23 +48,12 @@ async function loadProto() {
         getResourcePath('proto', 'dogpb.proto'),
         getResourcePath('proto', 'activitypb.proto'),
         getResourcePath('proto', 'pet-diary.proto'),
-        getResourcePath('proto', 'milk-tea.proto'),
-        getResourcePath('proto', 'solarterms.proto'),
         getResourcePath('proto', 'mysteryshoppb.proto'),
         getResourcePath('proto', 'acepb.proto'),
         getResourcePath('proto', 'careerpb.proto'),
         getResourcePath('proto', 'paypb.proto'),
     ], { keepCase: true });
 
-    for (const name of ['MilkTeaOperateRequest', 'MilkTeaOperateReply', 'MilkTeaGetGroupReply']) {
-        types[name] = root.lookupType(`gamepb.activitypb.${name}`);
-    }
-    types.GetSolarTermsV2Request = root.lookupType('gamepb.solartermspb.GetSolarTermsV2Request');
-    types.GetSolarTermsV2Reply = root.lookupType('gamepb.solartermspb.GetSolarTermsV2Reply');
-    types.ClaimSolarTermsV2Request = root.lookupType('gamepb.solartermspb.ClaimSolarTermsV2Request');
-    types.ClaimSolarTermsV2Reply = root.lookupType('gamepb.solartermspb.ClaimSolarTermsV2Reply');
-    types.AnswerSolarTermsRequest = root.lookupType('gamepb.solartermspb.AnswerSolarTermsRequest');
-    types.AnswerSolarTermsReply = root.lookupType('gamepb.solartermspb.AnswerSolarTermsReply');
 
     // 网关
     types.GateMessage = root.lookupType('gatepb.Message');

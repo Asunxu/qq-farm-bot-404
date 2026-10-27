@@ -36,5 +36,6 @@ export function isWithinActivityWindowMs(window: { startMs: number, endMs: numbe
   return nowMs >= window.startMs && nowMs <= window.endMs
 }
 
-export const MILK_TEA_ACTIVITY_WINDOW = { startMs: 1792029600000, endMs: 1794844799000, updatedMs: 1792029600000 }
-export const MILK_TEA_BUSINESS_WINDOW = { ...MILK_TEA_ACTIVITY_WINDOW, endMs: 1794671998000 }
+// 奶茶活动整体已迁移为活动插件（core/plugins/milk-tea）：活动卡片、面板、
+// 全部自动化开关（含点券礼包 mall_coupon_gift_buy）的时间窗与文案均由插件
+// manifest 声明，此处不再保留字面量。

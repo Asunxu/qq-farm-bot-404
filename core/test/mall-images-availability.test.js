@@ -3,6 +3,7 @@ const test = require('node:test');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { assetExists, readAsset } = require('./_asset-resolver');
 const { registerAdminMallRoutes } = require('../src/controllers/admin-mall-routes');
 const sources = require('../src/gameConfig/MallImageSupplement.json');
 const ts = require('../../web/node_modules/typescript');
@@ -30,10 +31,10 @@ test('all eight mall goods resolve existing official images and verified sources
   assert.equal(goods.length, 8);
   for (const item of goods) {
     assert.ok(item.images.length, String(item.goodsId));
-    for (const url of item.images) assert.ok(fs.existsSync(path.join(__dirname, '../src/gameConfig', decodeURIComponent(url.replace('/game-config/', '')))));
+    for (const url of item.images) assert.ok(assetExists(url), `素材文件缺失: ${url}`);
   }
   for (const entry of sources.entries.filter(entry => entry.file)) {
-    const bytes = fs.readFileSync(path.join(__dirname, '../src/gameConfig/seed_images_named', entry.file));
+    const bytes = readAsset(path.join('seed_images_named', entry.file));
     assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
     assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), entry.sha256);
   }
